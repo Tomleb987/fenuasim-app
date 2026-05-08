@@ -35,7 +35,7 @@ export default function ExploreScreen() {
       <ScrollView showsVerticalScrollIndicator={false} style={s.scroll}>
         <Text style={s.secTitle}>Toutes les destinations</Text>
         {PACKAGES.map((p) => (
-          <TouchableOpacity key={p.code} style={s.planCard} onPress={() => router.push('/(tabs)/explore')}>
+          <TouchableOpacity key={p.code} style={s.planCard} onPress={() => router.push('/esim/' + p.code)}>
             <View style={s.planHead}>
               <View>
                 <Text style={s.planProvider}>{p.flag}  {p.country}</Text>
