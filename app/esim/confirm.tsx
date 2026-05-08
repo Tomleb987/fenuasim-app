@@ -55,7 +55,7 @@ export default function ConfirmEsim() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={s.ghost} onPress={() => router.push('/(tabs)')}>
+        <TouchableOpacity style={s.ghost} onPress={() => router.push('/insurance/form')}>
           <Text style={s.ghostTxt}>Retour a l'accueil</Text>
         </TouchableOpacity>
       </View>
