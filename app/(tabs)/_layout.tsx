@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router'
-import { Text, StyleSheet } from 'react-native'
+import { Text, StyleSheet, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
+import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/theme'
 
 export default function TabsLayout() {
@@ -17,8 +18,8 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Accueil',
-          tabBarIcon: ({ focused }) => (
-            <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.3 }}>home</Text>
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
           ),
         }}
       />
@@ -26,6 +27,7 @@ export default function TabsLayout() {
         name="explore"
         options={{
           title: 'eSIM',
+          tabBarLabel: () => null,
           tabBarIcon: () => (
             <LinearGradient
               colors={['#D251D8', '#FD7F3C']}
@@ -36,15 +38,14 @@ export default function TabsLayout() {
               <Text style={styles.pillText}>eSIM</Text>
             </LinearGradient>
           ),
-          tabBarLabel: () => null,
         }}
       />
       <Tabs.Screen
         name="account"
         options={{
           title: 'Compte',
-          tabBarIcon: ({ focused }) => (
-            <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.3 }}>user</Text>
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
           ),
         }}
       />
@@ -57,14 +58,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopColor: '#F0F0F0',
     borderTopWidth: 1,
-    height: 70,
-    paddingBottom: 14,
+    height: 80,
+    paddingBottom: 16,
     paddingTop: 8,
   },
   pill: {
     borderRadius: 24,
-    paddingHorizontal: 18,
-    paddingVertical: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 9,
+    marginBottom: 4,
   },
   pillText: {
     color: '#fff',
