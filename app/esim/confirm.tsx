@@ -55,7 +55,11 @@ export default function ConfirmEsim() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={s.ghost} onPress={() => router.push('/insurance/form')}>
+        <TouchableOpacity onPress={() => router.push('/insurance/form')}>
+          <Text style={s.insuranceTxt}>+ Ajouter une assurance voyage</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={s.ghost} onPress={() => router.push('/(tabs)')}>
           <Text style={s.ghostTxt}>Retour a l'accueil</Text>
         </TouchableOpacity>
       </View>
@@ -83,6 +87,7 @@ const s = StyleSheet.create({
   ctaWrap:{borderRadius:14,overflow:'hidden'},
   cta:{padding:14,alignItems:'center',flexDirection:'row',justifyContent:'center'},
   ctaTxt:{color:'#fff',fontSize:15,fontWeight:'800'},
+  insuranceTxt:{color:'#FD7F3C',fontSize:14,fontWeight:'700',marginBottom:8,textAlign:'center'},
   ghost:{width:'100%',padding:14,alignItems:'center',marginTop:4},
   ghostTxt:{color:COLORS.textMuted,fontSize:14,fontWeight:'500'},
 })
