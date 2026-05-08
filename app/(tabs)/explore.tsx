@@ -1,26 +1,110 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput } from 'react-native'
+import { useEffect, useState } from 'react'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, ActivityIndicator } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
+import { supabase } from '../../lib/supabase'
 import { COLORS } from '../../constants/theme'
 
-const PACKAGES = [
-  { flag: '🇯🇵', country: 'Japon', code: 'JP', data: 'Illimite', days: 30, network: '5G', price: 3900, popular: true },
-  { flag: '🇺🇸', country: 'Etats-Unis', code: 'US', data: '10 GB', days: 15, network: '4G LTE', price: 2800, popular: false },
-  { flag: '🇦🇺', country: 'Australie', code: 'AU', data: '5 GB', days: 10, network: '4G LTE', price: 2100, popular: false },
-  { flag: '🇫🇷', country: 'France', code: 'FR', data: '20 GB', days: 30, network: '5G', price: 1800, popular: false },
-  { flag: '🇳🇿', country: 'N.-Zelande', code: 'NZ', data: '5 GB', days: 7, network: '4G LTE', price: 1600, popular: false },
-  { flag: '🇬🇧', country: 'Royaume-Uni', code: 'GB', data: '10 GB', days: 15, network: '5G', price: 2200, popular: false },
-]
+const FR: Record<string, string> = {
+  'Afghanistan': 'Afghanistan', 'Albania': 'Albanie', 'Algeria': 'Algerie',
+  'Argentina': 'Argentine', 'Armenia': 'Armenie', 'Australia': 'Australie',
+  'Austria': 'Autriche', 'Azerbaijan': 'Azerbaidjan', 'Bahrain': 'Bahrein',
+  'Bangladesh': 'Bangladesh', 'Belarus': 'Bielorussie', 'Belgium': 'Belgique',
+  'Bolivia': 'Bolivie', 'Bosnia': 'Bosnie', 'Brazil': 'Bresil',
+  'Bulgaria': 'Bulgarie', 'Cambodia': 'Cambodge', 'Canada': 'Canada',
+  'Chile': 'Chili', 'China': 'Chine', 'Colombia': 'Colombie',
+  'Costa Rica': 'Costa Rica', 'Croatia': 'Croatie', 'Cyprus': 'Chypre',
+  'Czech Republic': 'Republique Tcheque', 'Denmark': 'Danemark',
+  'Ecuador': 'Equateur', 'Egypt': 'Egypte', 'Estonia': 'Estonie',
+  'Ethiopia': 'Ethiopie', 'Finland': 'Finlande', 'France': 'France',
+  'Georgia': 'Georgie', 'Germany': 'Allemagne', 'Ghana': 'Ghana',
+  'Greece': 'Grece', 'Guatemala': 'Guatemala', 'Hong Kong': 'Hong Kong',
+  'Hungary': 'Hongrie', 'Iceland': 'Islande', 'India': 'Inde',
+  'Indonesia': 'Indonesie', 'Ireland': 'Irlande', 'Israel': 'Israel',
+  'Italy': 'Italie', 'Japan': 'Japon', 'Jordan': 'Jordanie',
+  'Kazakhstan': 'Kazakhstan', 'Kenya': 'Kenya', 'Kuwait': 'Koweit',
+  'Kyrgyzstan': 'Kirghizistan', 'Laos': 'Laos', 'Latvia': 'Lettonie',
+  'Lithuania': 'Lituanie', 'Luxembourg': 'Luxembourg', 'Macau': 'Macao',
+  'Malaysia': 'Malaisie', 'Malta': 'Malte', 'Mexico': 'Mexique',
+  'Moldova': 'Moldavie', 'Mongolia': 'Mongolie', 'Montenegro': 'Montenegro',
+  'Morocco': 'Maroc', 'Myanmar': 'Myanmar', 'Nepal': 'Nepal',
+  'Netherlands': 'Pays-Bas', 'New Zealand': 'Nouvelle-Zelande',
+  'Nigeria': 'Nigeria', 'Norway': 'Norvege', 'Oman': 'Oman',
+  'Pakistan': 'Pakistan', 'Panama': 'Panama', 'Paraguay': 'Paraguay',
+  'Peru': 'Perou', 'Philippines': 'Philippines', 'Poland': 'Pologne',
+  'Portugal': 'Portugal', 'Qatar': 'Qatar', 'Romania': 'Roumanie',
+  'Russia': 'Russie', 'Saudi Arabia': 'Arabie Saoudite', 'Serbia': 'Serbie',
+  'Singapore': 'Singapour', 'Slovakia': 'Slovaquie', 'Slovenia': 'Slovenie',
+  'South Africa': 'Afrique du Sud', 'South Korea': 'Coree du Sud',
+  'Spain': 'Espagne', 'Sri Lanka': 'Sri Lanka', 'Sweden': 'Suede',
+  'Switzerland': 'Suisse', 'Taiwan': 'Taiwan', 'Tajikistan': 'Tadjikistan',
+  'Tanzania': 'Tanzanie', 'Thailand': 'Thailande', 'Tunisia': 'Tunisie',
+  'Turkey': 'Turquie', 'Uganda': 'Ouganda', 'Ukraine': 'Ukraine',
+  'United Arab Emirates': 'Emirats Arabes Unis', 'United Kingdom': 'Royaume-Uni',
+  'United States': 'Etats-Unis', 'Uruguay': 'Uruguay', 'Uzbekistan': 'Ouzbekistan',
+  'Venezuela': 'Venezuela', 'Vietnam': 'Vietnam', 'Zimbabwe': 'Zimbabwe',
+}
+
+function toFR(name: string) {
+  return FR[name] ?? name
+}
 
 export default function ExploreScreen() {
   const router = useRouter()
+  const [destinations, setDestinations] = useState<any[]>([])
+  const [filtered, setFiltered] = useState<any[]>([])
+  const [search, setSearch] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => { fetchDestinations() }, [])
+
+  useEffect(() => {
+    if (!search.trim()) { setFiltered(destinations); return }
+    const q = search.toLowerCase()
+    setFiltered(destinations.filter(d =>
+      d.nameFR.toLowerCase().includes(q) ||
+      d.region_fr?.toLowerCase().includes(q)
+    ))
+  }, [search, destinations])
+
+  async function fetchDestinations() {
+    setLoading(true)
+    const { data } = await supabase
+      .from('airalo_packages')
+      .select('id, name, region_fr, slug, data_amount, data_unit, validity_days, final_price_xpf, is_unlimited, networks, type, status')
+      .eq('status', 'active')
+      .eq('type', 'local')
+      .order('region_fr', { ascending: true })
+
+    if (data) {
+      const map: Record<string, any> = {}
+      data.forEach(p => {
+        if (!p.region_fr) return
+        if (!map[p.region_fr] || p.final_price_xpf < map[p.region_fr].minPrice) {
+          map[p.region_fr] = {
+            region_fr: p.region_fr,
+            nameFR: toFR(p.region_fr),
+            slug: p.slug,
+            minPrice: p.final_price_xpf,
+            count: (map[p.region_fr]?.count ?? 0) + 1,
+          }
+        } else {
+          map[p.region_fr].count++
+        }
+      })
+      const list = Object.values(map).sort((a, b) => a.nameFR.localeCompare(b.nameFR))
+      setDestinations(list)
+      setFiltered(list)
+    }
+    setLoading(false)
+  }
+
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={s.topBar}>
         <Text style={s.topLogo}>Explorer</Text>
-        <Ionicons name="options-outline" size={22} color="#333" />
       </View>
       <View style={s.searchSection}>
         <View style={s.searchBox}>
@@ -29,69 +113,73 @@ export default function ExploreScreen() {
             style={s.searchInput}
             placeholder="Rechercher une destination..."
             placeholderTextColor="#aaa"
+            value={search}
+            onChangeText={setSearch}
           />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')}>
+              <Ionicons name="close-circle" size={17} color="#ccc" />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
-      <ScrollView showsVerticalScrollIndicator={false} style={s.scroll}>
-        <Text style={s.secTitle}>Toutes les destinations</Text>
-        {PACKAGES.map((p) => (
-          <TouchableOpacity key={p.code} style={s.planCard} onPress={() => router.push('/esim/' + p.code)}>
-            <View style={s.planHead}>
-              <View>
-                <Text style={s.planProvider}>{p.flag}  {p.country}</Text>
-                <Text style={s.planName}>Forfait {p.data}</Text>
+
+      {loading ? (
+        <View style={s.loader}>
+          <ActivityIndicator color={COLORS.violet} size="large" />
+          <Text style={s.loaderTxt}>Chargement des destinations...</Text>
+        </View>
+      ) : (
+        <ScrollView showsVerticalScrollIndicator={false} style={s.scroll}>
+          <Text style={s.secTitle}>{filtered.length} destinations disponibles</Text>
+          {filtered.map(d => (
+            <TouchableOpacity
+              key={d.region_fr}
+              style={s.planCard}
+              onPress={() => router.push({ pathname: '/esim/[country]', params: { country: d.slug ?? d.region_fr } })}
+            >
+              <View style={s.planHead}>
+                <View style={{flex:1}}>
+                  <Text style={s.planName}>{d.nameFR}</Text>
+                  <Text style={s.planSub}>{d.count} forfait{d.count > 1 ? 's' : ''} disponible{d.count > 1 ? 's' : ''}</Text>
+                </View>
+                <View style={{alignItems:'flex-end'}}>
+                  <Text style={s.priceLabel}>A partir de</Text>
+                  <Text style={s.priceVal}>{Math.round(d.minPrice).toLocaleString()} XPF</Text>
+                </View>
               </View>
-              {p.popular && (
-                <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.badge}>
-                  <Text style={s.badgeTxt}>Populaire</Text>
-                </LinearGradient>
-              )}
-            </View>
-            <View style={s.chips}>
-              <View style={s.chip}><Ionicons name="server-outline" size={13} color="#888" /><Text style={s.chipTxt}>{p.data}</Text></View>
-              <View style={s.chip}><Ionicons name="calendar-outline" size={13} color="#888" /><Text style={s.chipTxt}>{p.days} jours</Text></View>
-              <View style={s.chip}><Ionicons name="wifi-outline" size={13} color="#888" /><Text style={s.chipTxt}>{p.network}</Text></View>
-            </View>
-            <View style={s.planFooter}>
-              <View>
-                <Text style={s.priceLabel}>A partir de</Text>
-                <Text style={s.priceVal}>{p.price.toLocaleString()} XPF</Text>
-              </View>
-              <TouchableOpacity>
+              <View style={s.planFooter}>
                 <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.buyBtn}>
-                  <Text style={s.buyBtnTxt}>Voir</Text>
+                  <Text style={s.buyBtnTxt}>Voir les forfaits</Text>
                 </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        ))}
-        <View style={{height:20}} />
-      </ScrollView>
+              </View>
+            </TouchableOpacity>
+          ))}
+          <View style={{height:20}} />
+        </ScrollView>
+      )}
     </SafeAreaView>
   )
 }
 
 const s = StyleSheet.create({
   safe:{flex:1,backgroundColor:COLORS.bg},
-  topBar:{backgroundColor:'#fff',paddingHorizontal:18,paddingVertical:12,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},
+  topBar:{backgroundColor:'#fff',paddingHorizontal:18,paddingVertical:12},
   topLogo:{fontSize:20,fontWeight:'800',color:COLORS.violet},
   searchSection:{backgroundColor:'#fff',paddingHorizontal:18,paddingBottom:14},
   searchBox:{flexDirection:'row',alignItems:'center',gap:10,backgroundColor:COLORS.bg,borderRadius:12,paddingHorizontal:14,paddingVertical:11},
   searchInput:{flex:1,fontSize:14,color:'#333'},
+  loader:{flex:1,justifyContent:'center',alignItems:'center',gap:12},
+  loaderTxt:{fontSize:14,color:COLORS.textMuted},
   scroll:{flex:1,padding:16},
-  secTitle:{fontSize:16,fontWeight:'700',color:COLORS.text,marginBottom:12},
-  planCard:{backgroundColor:'#fff',borderRadius:16,padding:16,marginBottom:12,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
+  secTitle:{fontSize:14,fontWeight:'600',color:COLORS.textMuted,marginBottom:12},
+  planCard:{backgroundColor:'#fff',borderRadius:16,padding:16,marginBottom:10,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
   planHead:{flexDirection:'row',justifyContent:'space-between',alignItems:'flex-start',marginBottom:12},
-  planProvider:{fontSize:12,fontWeight:'700',color:'#888',textTransform:'uppercase',letterSpacing:0.5},
-  planName:{fontSize:15,fontWeight:'700',color:COLORS.text,marginTop:2},
-  badge:{paddingHorizontal:10,paddingVertical:4,borderRadius:20},
-  badgeTxt:{color:'#fff',fontSize:11,fontWeight:'700'},
-  chips:{flexDirection:'row',gap:8,flexWrap:'wrap',marginBottom:12},
-  chip:{backgroundColor:COLORS.bg,borderRadius:8,paddingHorizontal:10,paddingVertical:5,flexDirection:'row',alignItems:'center',gap:5},
-  chipTxt:{fontSize:12,fontWeight:'600',color:'#444'},
-  planFooter:{flexDirection:'row',justifyContent:'space-between',alignItems:'center'},
-  priceLabel:{fontSize:12,color:'#aaa'},
-  priceVal:{fontSize:20,fontWeight:'800',color:COLORS.text},
-  buyBtn:{borderRadius:10,paddingHorizontal:20,paddingVertical:10},
+  planName:{fontSize:16,fontWeight:'700',color:COLORS.text},
+  planSub:{fontSize:12,color:COLORS.textMuted,marginTop:2},
+  priceLabel:{fontSize:11,color:'#aaa',textAlign:'right'},
+  priceVal:{fontSize:18,fontWeight:'800',color:COLORS.text},
+  planFooter:{flexDirection:'row',justifyContent:'flex-end'},
+  buyBtn:{borderRadius:10,paddingHorizontal:16,paddingVertical:9},
   buyBtnTxt:{color:'#fff',fontSize:13,fontWeight:'700'},
 })
