@@ -1,2 +1,0 @@
-# fenuasim-app
-application mobile
