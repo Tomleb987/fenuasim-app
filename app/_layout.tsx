@@ -29,8 +29,8 @@ function SplashScreen() {
       <StatusBar style="light" />
       <Animated.View style={{ transform: [{ scale }], opacity, alignItems: 'center' }}>
         <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-          <Image source={require('../assets/images/logo-white.png')} style={{ width: 240, height: 90, resizeMode: 'contain' }} />
-          <Text style={{ fontSize: 52, fontWeight: '800', color: 'rgba(255,255,255,0.7)', letterSpacing: -1 }}>SIM</Text>
+          <Image source={require('../assets/images/logo-white.png')} style={{ width: 260, height: 100, resizeMode: 'contain', borderRadius: 16, overflow: 'hidden' }} />
+
         </View>
         <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.85)', marginTop: 10, fontWeight: '500', letterSpacing: 1 }}>
           Votre eSIM pour voyager
@@ -52,7 +52,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     // Splash minimum 2.5 secondes
-    const splashTimer = setTimeout(() => setShowSplash(false), 2500)
+    const splashTimer = setTimeout(() => setShowSplash(false), 3000)
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
