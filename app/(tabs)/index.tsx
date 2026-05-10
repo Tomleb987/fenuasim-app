@@ -1,79 +1,126 @@
+import { useEffect, useState } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
-import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { Ionicons } from '@expo/vector-icons'
+import { useRouter } from 'expo-router'
+import { supabase } from '../../lib/supabase'
 import { COLORS } from '../../constants/theme'
-
-const DEST_CARDS = [
-  { flag: '\u{1F1EF}\u{1F1F5}', label: 'Japon', c1: '#FF6B6B', c2: '#FF8E53' },
-  { flag: '\u{1F1FA}\u{1F1F8}', label: 'Etats-Unis', c1: '#4776E6', c2: '#8E54E9' },
-  { flag: '\u{1F1E6}\u{1F1FA}', label: 'Australie', c1: '#11998e', c2: '#38ef7d' },
-  { flag: '\u{1F1EB}\u{1F1F7}', label: 'France', c1: '#2980B9', c2: '#6DD5FA' },
-  { flag: '\u{1F1F3}\u{1F1FF}', label: 'N.-Zelande', c1: '#093028', c2: '#237A57' },
-]
+import dayjs from 'dayjs'
 
 export default function HomeScreen() {
   const router = useRouter()
+  const [email, setEmail] = useState<string | null>(null)
+  const [esims, setEsims] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  async function loadData() {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user?.email) return
+    setEmail(session.user.email)
+    const { data } = await supabase
+      .from('airalo_orders')
+      .select('*')
+      .eq('email', session.user.email)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(2)
+    if (data) setEsims(data)
+    setLoading(false)
+  }
+
+  const firstName = email?.split('@')[0] ?? ''
+
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:1}} style={s.header}>
-          <Text style={s.greeting}>Bonjour</Text>
-          <Text style={s.name}>Thomas</Text>
-        </LinearGradient>
-        <View style={s.floatRow}>
-          <View style={s.floatCard}>
-            <Text style={s.fcLabel}>eSIM active</Text>
-            <Text style={s.fcVal}>Japon</Text>
-            <Text style={s.fcOk}>Connecte</Text>
-          </View>
-          <View style={s.floatCard}>
-            <Text style={s.fcLabel}>Assurance</Text>
-            <Text style={s.fcVal}>AVA Globe</Text>
-            <Text style={s.fcOk}>Active</Text>
-          </View>
-        </View>
-        <View style={s.content}>
-          <View style={s.secHead}>
-            <Text style={s.secTitle}>Destinations populaires</Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/explore')}>
-              <Text style={s.secLink}>Voir tout</Text>
+          <View style={s.headerRow}>
+            <View>
+              <Text style={s.greeting}>Bonjour 👋</Text>
+              <Text style={s.name}>{firstName}</Text>
+            </View>
+            <TouchableOpacity style={s.notifBtn} onPress={() => router.push('/(tabs)/account')}>
+              <Ionicons name="person-outline" size={20} color="#fff" />
             </TouchableOpacity>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {DEST_CARDS.map(d => (
-              <TouchableOpacity key={d.label}>
-                <LinearGradient colors={[d.c1,d.c2]} style={s.destCard}>
-                  <Text style={s.destFlag}>{d.flag}</Text>
-                  <Text style={s.destLabel}>{d.label}</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-          <View style={[s.secHead,{marginTop:20}]}>
-            <Text style={s.secTitle}>Mes eSIM</Text>
-          </View>
-          <View style={s.esimCard}>
-            <View style={s.esimHead}>
-              <Text style={{fontSize:28}}>🇯🇵</Text>
-              <View style={{flex:1,marginLeft:10}}>
-                <Text style={s.esimTitle}>Japon</Text>
-                <Text style={s.esimOp}>FENUASIM · 5 GB</Text>
+        </LinearGradient>
+
+        <View style={s.content}>
+          {/* Bouton principal */}
+          <TouchableOpacity style={s.mainCta} onPress={() => router.push('/(tabs)/explore')}>
+            <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.mainCtaGrad}>
+              <Ionicons name="search-outline" size={22} color="#fff" />
+              <Text style={s.mainCtaTxt}>Trouver mon eSIM</Text>
+              <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* eSIM actives */}
+          {esims.length > 0 && (
+            <>
+              <View style={s.secHead}>
+                <Text style={s.secTitle}>Mes eSIM actives</Text>
+                <TouchableOpacity onPress={() => router.push('/(tabs)/account')}>
+                  <Text style={s.secLink}>Voir tout</Text>
+                </TouchableOpacity>
               </View>
-              <View style={s.pillOk}><Text style={s.pillOkTxt}>Actif</Text></View>
-            </View>
-            <View style={s.barLabels}>
-              <Text style={s.barLabel}>1,2 GB restants</Text>
-              <Text style={s.barLabel}>5 GB</Text>
-            </View>
-            <View style={s.barTrack}>
-              <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:0}} style={[s.barFill,{width:'24%'}]} />
-            </View>
+              {esims.map(e => (
+                <View key={e.id} style={s.esimCard}>
+                  <View style={s.esimHead}>
+                    <View style={s.simIcon}>
+                      <Ionicons name="sim-card-outline" size={22} color={COLORS.violet} />
+                    </View>
+                    <View style={{flex:1}}>
+                      <Text style={s.esimTitle}>{e.package_id ?? 'eSIM'}</Text>
+                      <Text style={s.esimSub}>
+                        {e.expires_at ? 'Expire le ' + dayjs(e.expires_at).format('DD/MM/YYYY') : 'Active'}
+                      </Text>
+                    </View>
+                    <View style={s.pillOk}><Text style={s.pillOkTxt}>Actif</Text></View>
+                  </View>
+                </View>
+              ))}
+            </>
+          )}
+
+          {/* Actions rapides */}
+          <View style={s.secHead}>
+            <Text style={s.secTitle}>Actions rapides</Text>
           </View>
-          <View style={[s.secHead,{marginTop:20}]}>
-            <Text style={s.secTitle}>Decouvrir</Text>
+          <View style={s.grid}>
+            <TouchableOpacity style={s.gridCard} onPress={() => router.push('/(tabs)/explore')}>
+              <View style={[s.gridIcon,{backgroundColor:'rgba(210,81,216,0.1)'}]}>
+                <Ionicons name="sim-card-outline" size={24} color={COLORS.violet} />
+              </View>
+              <Text style={s.gridLabel}>Nouvelle eSIM</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.gridCard} onPress={() => router.push('/insurance/form')}>
+              <View style={[s.gridIcon,{backgroundColor:'rgba(253,127,60,0.1)'}]}>
+                <Ionicons name="shield-outline" size={24} color="#FD7F3C" />
+              </View>
+              <Text style={s.gridLabel}>Assurance voyage</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.gridCard} onPress={() => router.push('/(tabs)/account')}>
+              <View style={[s.gridIcon,{backgroundColor:'rgba(10,135,84,0.1)'}]}>
+                <Ionicons name="receipt-outline" size={24} color={COLORS.success} />
+              </View>
+              <Text style={s.gridLabel}>Mes commandes</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.gridCard}>
+              <View style={[s.gridIcon,{backgroundColor:'rgba(136,135,128,0.15)'}]}>
+                <Ionicons name="headset-outline" size={24} color="#888" />
+              </View>
+              <Text style={s.gridLabel}>Support</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/account')}>
+
+          {/* Banner assurance */}
+          <TouchableOpacity onPress={() => router.push('/insurance/form')}>
             <View style={s.discoverCard}>
               <LinearGradient colors={['#FD7F3C','#D251D8']} style={s.discoverBanner}>
                 <Text style={s.discoverBannerTxt}>Assurance voyage AVA</Text>
@@ -83,7 +130,7 @@ export default function HomeScreen() {
                   <Text style={s.discoverTitle}>Protegez votre voyage</Text>
                   <Text style={s.discoverSub}>Annulation · Medical · Rapatriement</Text>
                 </View>
-                <Text style={{color:'#ccc',fontSize:20}}>›</Text>
+                <Ionicons name="chevron-forward" size={20} color="#ccc" />
               </View>
             </View>
           </TouchableOpacity>
@@ -95,31 +142,29 @@ export default function HomeScreen() {
 
 const s = StyleSheet.create({
   safe:{flex:1,backgroundColor:COLORS.bg},
-  header:{padding:20,paddingBottom:36},
+  header:{padding:20,paddingBottom:24},
+  headerRow:{flexDirection:'row',justifyContent:'space-between',alignItems:'flex-start'},
   greeting:{color:'rgba(255,255,255,0.85)',fontSize:13},
   name:{color:'#fff',fontSize:22,fontWeight:'800',marginTop:2},
-  floatRow:{flexDirection:'row',gap:10,paddingHorizontal:16,marginTop:-20,zIndex:2},
-  floatCard:{flex:1,backgroundColor:'#fff',borderRadius:14,padding:12,shadowColor:'#000',shadowOpacity:0.08,shadowRadius:8,elevation:3},
-  fcLabel:{fontSize:11,color:COLORS.textMuted,marginBottom:4},
-  fcVal:{fontSize:14,fontWeight:'700',color:COLORS.text},
-  fcOk:{fontSize:11,color:COLORS.success,marginTop:3},
-  content:{padding:16,paddingTop:20},
-  secHead:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:12},
+  notifBtn:{backgroundColor:'rgba(255,255,255,0.2)',borderRadius:20,width:36,height:36,justifyContent:'center',alignItems:'center'},
+  content:{padding:16},
+  mainCta:{borderRadius:16,overflow:'hidden',marginBottom:20,marginTop:-12,shadowColor:'#D251D8',shadowOpacity:0.3,shadowRadius:8,elevation:4},
+  mainCtaGrad:{flexDirection:'row',alignItems:'center',padding:18,gap:12},
+  mainCtaTxt:{flex:1,color:'#fff',fontSize:17,fontWeight:'800'},
+  secHead:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:12,marginTop:4},
   secTitle:{fontSize:16,fontWeight:'700',color:COLORS.text},
   secLink:{fontSize:13,fontWeight:'600',color:COLORS.violet},
-  destCard:{width:120,height:85,borderRadius:14,marginRight:10,justifyContent:'flex-end',padding:8},
-  destFlag:{fontSize:32,textAlign:'center',marginBottom:4},
-  destLabel:{color:'#fff',fontSize:12,fontWeight:'700'},
-  esimCard:{backgroundColor:'#fff',borderRadius:16,padding:16,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
-  esimHead:{flexDirection:'row',alignItems:'center',marginBottom:12},
-  esimTitle:{fontSize:15,fontWeight:'700',color:COLORS.text},
-  esimOp:{fontSize:12,color:COLORS.textMuted,marginTop:2},
+  esimCard:{backgroundColor:'#fff',borderRadius:16,padding:16,marginBottom:10,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
+  esimHead:{flexDirection:'row',alignItems:'center',gap:10},
+  simIcon:{width:44,height:44,borderRadius:12,backgroundColor:'rgba(210,81,216,0.1)',justifyContent:'center',alignItems:'center'},
+  esimTitle:{fontSize:14,fontWeight:'700',color:COLORS.text},
+  esimSub:{fontSize:12,color:COLORS.textMuted,marginTop:2},
   pillOk:{backgroundColor:COLORS.successBg,paddingHorizontal:10,paddingVertical:4,borderRadius:20},
   pillOkTxt:{color:COLORS.success,fontSize:11,fontWeight:'700'},
-  barLabels:{flexDirection:'row',justifyContent:'space-between',marginBottom:5},
-  barLabel:{fontSize:12,color:COLORS.textMuted},
-  barTrack:{backgroundColor:'#F0F0F0',borderRadius:20,height:7,overflow:'hidden'},
-  barFill:{height:'100%',borderRadius:20},
+  grid:{flexDirection:'row',flexWrap:'wrap',gap:10,marginBottom:16},
+  gridCard:{backgroundColor:'#fff',borderRadius:16,padding:14,alignItems:'center',width:'47%',shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
+  gridIcon:{width:44,height:44,borderRadius:12,justifyContent:'center',alignItems:'center',marginBottom:8},
+  gridLabel:{fontSize:13,fontWeight:'600',color:COLORS.text,textAlign:'center'},
   discoverCard:{backgroundColor:'#fff',borderRadius:16,overflow:'hidden',shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
   discoverBanner:{height:80,justifyContent:'center',alignItems:'center'},
   discoverBannerTxt:{color:'#fff',fontSize:14,fontWeight:'800'},

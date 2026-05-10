@@ -63,7 +63,7 @@ export default function CountryDetail() {
     setLoading(true)
     const { data } = await supabase
       .from('airalo_packages')
-      .select('id, name, region_fr, data_amount, data_unit, validity_days, validity, final_price_xpf, is_unlimited, available_topup, operator_name')
+      .select('id, name, region_fr, data_amount, data_unit, validity_days, validity, final_price_xpf, is_unlimited, available_topup, operator_name, includes_voice, includes_sms, networks')
       .eq('status', 'active')
       .eq('slug', s)
       .order('final_price_xpf', { ascending: true })
@@ -107,10 +107,12 @@ export default function CountryDetail() {
               >
                 <Text style={s.planData}>{getData(p)}</Text>
                 <Text style={s.planDays}>{getDays(p)}</Text>
+                <View style={s.planBadges}>
+                  {p.includes_voice && <View style={s.badge}><Text style={s.badgeTxt}>Appels</Text></View>}
+                  {p.includes_sms && <View style={s.badge}><Text style={s.badgeTxt}>SMS</Text></View>}
+                  {p.available_topup && <View style={[s.badge,s.badgeGreen]}><Text style={[s.badgeTxt,{color:'#0A8754'}]}>Rechargeable</Text></View>}
+                </View>
                 <Text style={s.planPrice}>{Math.round(p.final_price_xpf).toLocaleString()} XPF</Text>
-                {p.available_topup && (
-                  <View style={s.topupBadge}><Text style={s.topupTxt}>Rechargeable</Text></View>
-                )}
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -129,6 +131,14 @@ export default function CountryDetail() {
               <View style={s.row}>
                 <Text style={s.rowLabel}>Operateur</Text>
                 <Text style={s.rowVal}>{sel.operator_name ?? 'Local'}</Text>
+              </View>
+              <View style={s.row}>
+                <Text style={s.rowLabel}>Appels</Text>
+                <Text style={s.rowVal}>{sel.includes_voice ? 'Inclus' : 'Non inclus'}</Text>
+              </View>
+              <View style={s.row}>
+                <Text style={s.rowLabel}>SMS</Text>
+                <Text style={s.rowVal}>{sel.includes_sms ? 'Inclus' : 'Non inclus'}</Text>
               </View>
               <View style={[s.row,{borderBottomWidth:0}]}>
                 <Text style={s.rowLabel}>Prix</Text>
@@ -152,7 +162,7 @@ export default function CountryDetail() {
 
       {sel && (
         <View style={s.ctaBar}>
-          <TouchableOpacity style={s.ctaWrap} onPress={() => router.push('/esim/confirm')}>
+          <TouchableOpacity style={s.ctaWrap} onPress={() => router.push({ pathname: '/esim/payment', params: { packageId: sel.id, packageName: sel.name, price: String(Math.round(sel.final_price_xpf)), days: getDays(sel), data: getData(sel), country: toFR(countryName) } })}>
             <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.ctaBtn}>
               <Text style={s.ctaTxt}>Acheter · {Math.round(sel.final_price_xpf).toLocaleString()} XPF</Text>
             </LinearGradient>
@@ -180,8 +190,10 @@ const s = StyleSheet.create({
   planData:{fontSize:15,fontWeight:'700',color:COLORS.text},
   planDays:{fontSize:11,color:'#999',marginTop:2},
   planPrice:{fontSize:12,fontWeight:'600',color:COLORS.violet,marginTop:6},
-  topupBadge:{backgroundColor:'rgba(10,135,84,0.1)',borderRadius:20,paddingHorizontal:6,paddingVertical:2,marginTop:4},
-  topupTxt:{fontSize:9,fontWeight:'700',color:COLORS.success},
+  planBadges:{flexDirection:'row',gap:4,marginTop:4,flexWrap:'wrap'},
+  badge:{backgroundColor:'rgba(210,81,216,0.1)',borderRadius:20,paddingHorizontal:6,paddingVertical:2},
+  badgeGreen:{backgroundColor:'rgba(10,135,84,0.1)'},
+  badgeTxt:{fontSize:9,fontWeight:'700',color:COLORS.violet},
   selectedCard:{backgroundColor:'#fff',borderRadius:16,padding:16,marginBottom:16,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
   selectedTitle:{fontSize:14,fontWeight:'700',color:COLORS.text,marginBottom:12},
   row:{flexDirection:'row',justifyContent:'space-between',paddingVertical:8,borderBottomWidth:0.5,borderBottomColor:'#f5f5f5'},

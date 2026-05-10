@@ -9,7 +9,7 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "@stripe/stripe-react-native": "^0.65.0",
+    "@stripe/stripe-react-native": "^0.50.3",
     "@supabase/supabase-js": "^2.105.3",
     "dayjs": "^1.11.20",
     "expo": "~54.0.33",

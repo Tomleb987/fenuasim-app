@@ -13,14 +13,24 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "ios": { "supportsTablet": true },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.fenuasim.app"
+    },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.fenuasim.app"
     },
-    "web": { "favicon": "./assets/favicon.png", "bundler": "metro" },
-    "plugins": ["expo-router", "expo-font"]
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font"
+    ]
   }
 }
