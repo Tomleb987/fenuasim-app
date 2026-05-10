@@ -14,10 +14,10 @@ const FR: Record<string,string> = {
   'Netherlands':'Pays-Bas','Belgium':'Belgique','Switzerland':'Suisse',
   'South Korea':'Coree du Sud','China':'Chine','Thailand':'Thailande',
   'Indonesia':'Indonesie','Malaysia':'Malaisie','Singapore':'Singapour',
-  'Philippines':'Philippines','Vietnam':'Vietnam','India':'Inde',
+  'Philippines':'Philippines','Vietnam':'Viet Nam','India':'Inde',
   'Canada':'Canada','Mexico':'Mexique','Brazil':'Bresil',
   'United Arab Emirates':'Emirats Arabes Unis','Turkey':'Turquie',
-  'Saudi Arabia':'Arabie Saoudite','Egypt':'Egypte','Morocco':'Maroc',
+  'Saudi Arabia':'Arabie saoudite','Egypt':'Egypte','Morocco':'Maroc',
   'South Africa':'Afrique du Sud','Kenya':'Kenya',
 }
 
@@ -33,21 +33,14 @@ const GRAD: Record<string,[string,string]> = {
 function toFR(n: string) { return FR[n] ?? n }
 function getGrad(n: string): [string,string] { return GRAD[n] ?? ['#D251D8','#FD7F3C'] }
 function getDays(p: any): string {
-  if (p.validity_days) return String(p.validity_days) + ' jours'
-  if (p.validity) return p.validity.replace(' days','').replace(' day','') + ' jours'
+  if (p.validity_days) return String(p.validity_days) + 'j'
+  if (p.validity) return p.validity.replace(' days','').replace(' day','') + 'j'
   return '-'
 }
 function getData(p: any): string {
   if (p.is_unlimited) return 'Illimite'
   return String(p.data_amount) + ' ' + (p.data_unit ?? 'GB')
 }
-
-const FEATURES = [
-  'Installation par QR code en 2 min',
-  'Activable avant le depart',
-  'Rechargeable depuis lapp',
-  'Compatible iPhone et Android',
-]
 
 export default function CountryDetail() {
   const router = useRouter()
@@ -56,6 +49,7 @@ export default function CountryDetail() {
   const [selected, setSelected] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [countryName, setCountryName] = useState('')
+  const [activeTab, setActiveTab] = useState<'forfaits'|'infos'>('forfaits')
 
   useEffect(() => { if (slug) fetchPlans(String(slug)) }, [slug])
 
@@ -63,7 +57,7 @@ export default function CountryDetail() {
     setLoading(true)
     const { data } = await supabase
       .from('airalo_packages')
-      .select('id, name, region_fr, data_amount, data_unit, validity_days, validity, final_price_xpf, is_unlimited, available_topup, operator_name, includes_voice, includes_sms, networks')
+      .select('id, name, region_fr, data_amount, data_unit, validity_days, validity, final_price_xpf, is_unlimited, available_topup, operator_name, includes_voice, includes_sms, networks, type')
       .eq('status', 'active')
       .eq('slug', s)
       .order('final_price_xpf', { ascending: true })
@@ -80,25 +74,58 @@ export default function CountryDetail() {
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
+      
+      {/* Header compact */}
       <LinearGradient colors={grad} style={s.hero}>
         <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color="#fff" />
         </TouchableOpacity>
-        <Text style={s.heroTitle}>{toFR(countryName)}</Text>
-        <Text style={s.heroSub}>4G/5G · Reseau local</Text>
+        <View style={s.heroContent}>
+          <Text style={s.heroTitle}>{toFR(countryName)}</Text>
+          {plans[0]?.networks && <Text style={s.heroSub}>{plans[0].networks}</Text>}
+        </View>
       </LinearGradient>
 
+      {/* Tabs */}
       <View style={s.tabs}>
-        <Text style={[s.tab, s.tabActive]}>Forfaits</Text>
-        <Text style={s.tab}>Infos</Text>
+        <TouchableOpacity style={[s.tabBtn, activeTab==='forfaits' && s.tabBtnActive]} onPress={() => setActiveTab('forfaits')}>
+          <Text style={[s.tabTxt, activeTab==='forfaits' && s.tabTxtActive]}>Forfaits ({plans.length})</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[s.tabBtn, activeTab==='infos' && s.tabBtnActive]} onPress={() => setActiveTab('infos')}>
+          <Text style={[s.tabTxt, activeTab==='infos' && s.tabTxtActive]}>Infos</Text>
+        </TouchableOpacity>
       </View>
 
       {loading ? (
         <View style={s.loader}><ActivityIndicator color={COLORS.violet} size="large" /></View>
+      ) : activeTab === 'infos' ? (
+        /* INFOS — tout visible sans scroll */
+        <View style={s.infoPage}>
+          <View style={s.infoCard}>
+            <Text style={s.infoSection}>Compatibilite</Text>
+            <View style={s.infoRow}><Ionicons name="phone-portrait-outline" size={16} color={COLORS.violet} /><Text style={s.infoTxt}>iPhone XS et versions ulterieures</Text></View>
+            <View style={s.infoRow}><Ionicons name="logo-android" size={16} color={COLORS.violet} /><Text style={s.infoTxt}>Android avec support eSIM</Text></View>
+            {plans[0]?.networks && <View style={s.infoRow}><Ionicons name="wifi-outline" size={16} color={COLORS.violet} /><Text style={s.infoTxt}>{plans[0].networks}</Text></View>}
+          </View>
+          <View style={s.infoCard}>
+            <Text style={s.infoSection}>Installation</Text>
+            {['Achetez votre forfait','Appuyez sur Installer mon eSIM','Activez dans Reglages › Reseau mobile','Selectionnez leSIM comme donnees mobiles'].map((t,i) => (
+              <View key={i} style={s.infoRow}>
+                <View style={s.stepNum}><Text style={s.stepNumTxt}>{i+1}</Text></View>
+                <Text style={s.infoTxt}>{t}</Text>
+              </View>
+            ))}
+          </View>
+          <View style={s.infoCard}>
+            <Text style={s.infoSection}>Important</Text>
+            <View style={s.infoRow}><Ionicons name="information-circle-outline" size={16} color="#FD7F3C" /><Text style={s.infoTxt}>L'eSIM s'active automatiquement a l'arrivee dans le pays</Text></View>
+          </View>
+        </View>
       ) : (
-        <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
-          <Text style={s.secLabel}>{plans.length} forfait{plans.length > 1 ? 's' : ''} disponible{plans.length > 1 ? 's' : ''}</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginBottom:20}}>
+        /* FORFAITS — scroll horizontal seulement */
+        <View style={s.forfaitsPage}>
+          {/* Scroll horizontal des forfaits */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.plansScroll} contentContainerStyle={s.plansContent}>
             {plans.map(p => (
               <TouchableOpacity
                 key={p.id}
@@ -110,59 +137,55 @@ export default function CountryDetail() {
                 <View style={s.planBadges}>
                   {p.includes_voice && <View style={s.badge}><Text style={s.badgeTxt}>Appels</Text></View>}
                   {p.includes_sms && <View style={s.badge}><Text style={s.badgeTxt}>SMS</Text></View>}
-                  {p.available_topup && <View style={[s.badge,s.badgeGreen]}><Text style={[s.badgeTxt,{color:'#0A8754'}]}>Rechargeable</Text></View>}
+                  {p.available_topup && <View style={[s.badge,s.badgeGreen]}><Text style={[s.badgeTxt,{color:COLORS.success}]}>+</Text></View>}
                 </View>
                 <Text style={s.planPrice}>{Math.round(p.final_price_xpf).toLocaleString()} XPF</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
 
+          {/* Récap forfait sélectionné */}
           {sel && (
-            <View style={s.selectedCard}>
-              <Text style={s.selectedTitle}>Forfait selectionne</Text>
-              <View style={s.row}>
-                <Text style={s.rowLabel}>Data</Text>
-                <Text style={s.rowVal}>{getData(sel)}</Text>
-              </View>
-              <View style={s.row}>
-                <Text style={s.rowLabel}>Duree</Text>
-                <Text style={s.rowVal}>{getDays(sel)}</Text>
-              </View>
-              <View style={s.row}>
-                <Text style={s.rowLabel}>Operateur</Text>
-                <Text style={s.rowVal}>{sel.operator_name ?? 'Local'}</Text>
-              </View>
-              <View style={s.row}>
-                <Text style={s.rowLabel}>Appels</Text>
-                <Text style={s.rowVal}>{sel.includes_voice ? 'Inclus' : 'Non inclus'}</Text>
-              </View>
-              <View style={s.row}>
-                <Text style={s.rowLabel}>SMS</Text>
-                <Text style={s.rowVal}>{sel.includes_sms ? 'Inclus' : 'Non inclus'}</Text>
-              </View>
-              <View style={[s.row,{borderBottomWidth:0}]}>
-                <Text style={s.rowLabel}>Prix</Text>
-                <Text style={[s.rowVal,{color:COLORS.violet,fontWeight:'800'}]}>{Math.round(sel.final_price_xpf).toLocaleString()} XPF</Text>
-              </View>
+            <View style={s.recap}>
+              <View style={s.recapRow}><Text style={s.recapLabel}>Data</Text><Text style={s.recapVal}>{getData(sel)}</Text></View>
+              <View style={s.recapRow}><Text style={s.recapLabel}>Duree</Text><Text style={s.recapVal}>{getDays(sel).replace('j',' jours')}</Text></View>
+              <View style={s.recapRow}><Text style={s.recapLabel}>Reseaux</Text><Text style={[s.recapVal,{fontSize:11,flex:1,textAlign:'right'}]}>{sel.networks ?? sel.operator_name ?? '-'}</Text></View>
+              <View style={s.recapRow}><Text style={s.recapLabel}>Appels</Text><Text style={s.recapVal}>{sel.includes_voice ? 'Inclus' : 'Non inclus'}</Text></View>
+              <View style={[s.recapRow,{borderBottomWidth:0}]}><Text style={s.recapLabel}>SMS</Text><Text style={s.recapVal}>{sel.includes_sms ? 'Inclus' : 'Non inclus'}</Text></View>
             </View>
           )}
 
-          <Text style={s.secLabel}>Inclus</Text>
-          {FEATURES.map(f => (
-            <View key={f} style={s.featRow}>
-              <LinearGradient colors={['#D251D8','#FD7F3C']} style={s.featCheck}>
-                <Ionicons name="checkmark" size={12} color="#fff" />
-              </LinearGradient>
-              <Text style={s.featTxt}>{f}</Text>
-            </View>
-          ))}
-          <View style={{height:100}} />
-        </ScrollView>
+          {/* Features */}
+          <View style={s.features}>
+            {['QR code en 2 min','Activable avant le depart','Rechargeable'].map((f,i) => (
+              <View key={i} style={s.featRow}>
+                <LinearGradient colors={['#D251D8','#FD7F3C']} style={s.featCheck}>
+                  <Ionicons name="checkmark" size={10} color="#fff" />
+                </LinearGradient>
+                <Text style={s.featTxt}>{f}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
       )}
 
+      {/* CTA fixe */}
       {sel && (
         <View style={s.ctaBar}>
-          <TouchableOpacity style={s.ctaWrap} onPress={() => router.push({ pathname: '/esim/payment', params: { packageId: sel.id, packageName: sel.name, price: String(Math.round(sel.final_price_xpf)), days: getDays(sel), data: getData(sel), country: toFR(countryName) } })}>
+          <TouchableOpacity
+            style={s.ctaWrap}
+            onPress={() => router.push({
+              pathname: '/esim/payment',
+              params: {
+                packageId: sel.id,
+                packageName: sel.name,
+                price: String(Math.round(sel.final_price_xpf)),
+                days: getDays(sel).replace('j',' jours'),
+                data: getData(sel),
+                country: toFR(countryName)
+              }
+            })}
+          >
             <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.ctaBtn}>
               <Text style={s.ctaTxt}>Acheter · {Math.round(sel.final_price_xpf).toLocaleString()} XPF</Text>
             </LinearGradient>
@@ -175,35 +198,52 @@ export default function CountryDetail() {
 
 const s = StyleSheet.create({
   safe:{flex:1,backgroundColor:COLORS.bg},
-  hero:{padding:20,paddingBottom:24},
-  backBtn:{backgroundColor:'rgba(255,255,255,0.2)',borderRadius:20,width:36,height:36,justifyContent:'center',alignItems:'center',marginBottom:12},
-  heroTitle:{color:'#fff',fontSize:24,fontWeight:'800'},
-  heroSub:{color:'rgba(255,255,255,0.8)',fontSize:13,marginTop:4},
-  tabs:{backgroundColor:'#fff',flexDirection:'row',borderBottomWidth:1.5,borderBottomColor:'#F0F0F0'},
-  tab:{flex:1,textAlign:'center',paddingVertical:12,fontSize:13,fontWeight:'600',color:'#aaa'},
-  tabActive:{color:COLORS.violet,borderBottomWidth:2.5,borderBottomColor:COLORS.violet},
+  hero:{paddingHorizontal:16,paddingTop:12,paddingBottom:16,flexDirection:'row',alignItems:'center',gap:12},
+  backBtn:{backgroundColor:'rgba(255,255,255,0.2)',borderRadius:20,width:34,height:34,justifyContent:'center',alignItems:'center'},
+  heroContent:{flex:1},
+  heroTitle:{color:'#fff',fontSize:20,fontWeight:'800'},
+  heroSub:{color:'rgba(255,255,255,0.8)',fontSize:11,marginTop:2},
+  tabs:{backgroundColor:'#fff',flexDirection:'row',borderBottomWidth:1,borderBottomColor:'#F0F0F0'},
+  tabBtn:{flex:1,paddingVertical:10,alignItems:'center'},
+  tabBtnActive:{borderBottomWidth:2.5,borderBottomColor:COLORS.violet},
+  tabTxt:{fontSize:13,fontWeight:'600',color:'#aaa'},
+  tabTxtActive:{color:COLORS.violet},
   loader:{flex:1,justifyContent:'center',alignItems:'center'},
-  scroll:{flex:1,padding:16},
-  secLabel:{fontSize:13,fontWeight:'600',color:'#999',textTransform:'uppercase',letterSpacing:0.5,marginBottom:12},
-  planOpt:{borderWidth:1.5,borderColor:'#F0F0F0',borderRadius:14,padding:12,alignItems:'center',backgroundColor:'#fff',marginRight:10,minWidth:110},
+  
+  // Forfaits
+  forfaitsPage:{flex:1,paddingTop:12},
+  plansScroll:{paddingLeft:16,maxHeight:130,flexGrow:0},
+  plansContent:{paddingRight:16,gap:10},
+  planOpt:{borderWidth:1.5,borderColor:'#F0F0F0',borderRadius:14,padding:10,alignItems:'center',backgroundColor:'#fff',width:110},
   planOptSel:{borderColor:COLORS.violet,backgroundColor:'rgba(210,81,216,0.05)'},
-  planData:{fontSize:15,fontWeight:'700',color:COLORS.text},
-  planDays:{fontSize:11,color:'#999',marginTop:2},
-  planPrice:{fontSize:12,fontWeight:'600',color:COLORS.violet,marginTop:6},
-  planBadges:{flexDirection:'row',gap:4,marginTop:4,flexWrap:'wrap'},
-  badge:{backgroundColor:'rgba(210,81,216,0.1)',borderRadius:20,paddingHorizontal:6,paddingVertical:2},
+  planData:{fontSize:14,fontWeight:'700',color:COLORS.text},
+  planDays:{fontSize:11,color:'#999',marginTop:1},
+  planBadges:{flexDirection:'row',gap:3,marginTop:3,flexWrap:'wrap',justifyContent:'center'},
+  badge:{backgroundColor:'rgba(210,81,216,0.1)',borderRadius:20,paddingHorizontal:5,paddingVertical:1},
   badgeGreen:{backgroundColor:'rgba(10,135,84,0.1)'},
   badgeTxt:{fontSize:9,fontWeight:'700',color:COLORS.violet},
-  selectedCard:{backgroundColor:'#fff',borderRadius:16,padding:16,marginBottom:16,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
-  selectedTitle:{fontSize:14,fontWeight:'700',color:COLORS.text,marginBottom:12},
-  row:{flexDirection:'row',justifyContent:'space-between',paddingVertical:8,borderBottomWidth:0.5,borderBottomColor:'#f5f5f5'},
-  rowLabel:{fontSize:13,color:COLORS.textMuted},
-  rowVal:{fontSize:13,fontWeight:'600',color:COLORS.text},
-  featRow:{flexDirection:'row',alignItems:'center',gap:10,paddingVertical:9,borderBottomWidth:0.5,borderBottomColor:'#f5f5f5'},
-  featCheck:{width:20,height:20,borderRadius:10,justifyContent:'center',alignItems:'center'},
-  featTxt:{fontSize:13,color:'#333',flex:1},
-  ctaBar:{backgroundColor:'#fff',padding:16,borderTopWidth:1,borderTopColor:'#F0F0F0'},
+  planPrice:{fontSize:11,fontWeight:'700',color:COLORS.violet,marginTop:4},
+  recap:{backgroundColor:'#fff',marginHorizontal:16,marginTop:12,borderRadius:14,padding:14,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
+  recapRow:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingVertical:7,borderBottomWidth:0.5,borderBottomColor:'#f5f5f5'},
+  recapLabel:{fontSize:12,color:COLORS.textMuted},
+  recapVal:{fontSize:13,fontWeight:'600',color:COLORS.text},
+  features:{flexDirection:'row',justifyContent:'space-around',marginHorizontal:16,marginTop:12,backgroundColor:'#fff',borderRadius:14,padding:12,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:4,elevation:1},
+  featRow:{flexDirection:'row',alignItems:'center',gap:5},
+  featCheck:{width:16,height:16,borderRadius:8,justifyContent:'center',alignItems:'center'},
+  featTxt:{fontSize:11,color:'#555'},
+
+  // Infos
+  infoPage:{flex:1,padding:16,gap:10},
+  infoCard:{backgroundColor:'#fff',borderRadius:14,padding:14,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:4,elevation:1},
+  infoSection:{fontSize:11,fontWeight:'700',color:'#999',textTransform:'uppercase',letterSpacing:0.5,marginBottom:8},
+  infoRow:{flexDirection:'row',alignItems:'flex-start',gap:10,paddingVertical:6,borderBottomWidth:0.5,borderBottomColor:'#f8f8f8'},
+  infoTxt:{fontSize:13,color:'#333',flex:1,lineHeight:18},
+  stepNum:{width:20,height:20,borderRadius:10,backgroundColor:COLORS.violet,justifyContent:'center',alignItems:'center',flexShrink:0},
+  stepNumTxt:{color:'#fff',fontSize:10,fontWeight:'800'},
+
+  // CTA
+  ctaBar:{backgroundColor:'#fff',padding:12,borderTopWidth:1,borderTopColor:'#F0F0F0'},
   ctaWrap:{borderRadius:14,overflow:'hidden'},
-  ctaBtn:{padding:16,alignItems:'center'},
-  ctaTxt:{color:'#fff',fontSize:16,fontWeight:'800'},
+  ctaBtn:{padding:15,alignItems:'center'},
+  ctaTxt:{color:'#fff',fontSize:15,fontWeight:'800'},
 })

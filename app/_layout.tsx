@@ -1,56 +1,82 @@
+import React from 'react'
 import { useEffect, useState } from 'react'
 import { Stack, useRouter, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
-import { View, ActivityIndicator, Linking } from 'react-native'
+import { View, Text, ActivityIndicator, Animated, Image } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import { supabase } from '../lib/supabase'
 import { Session } from '@supabase/supabase-js'
 import { COLORS } from '../constants/theme'
 
+function SplashScreen() {
+  const scale = React.useRef(new Animated.Value(0.8)).current
+  const opacity = React.useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 50, friction: 7 }),
+      Animated.timing(opacity, { toValue: 1, duration: 600, useNativeDriver: true }),
+    ]).start()
+  }, [])
+
+  return (
+    <LinearGradient
+      colors={['#D251D8', '#FD7F3C']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+    >
+      <StatusBar style="light" />
+      <Animated.View style={{ transform: [{ scale }], opacity, alignItems: 'center' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+          <Image source={require('../assets/images/logo-white.png')} style={{ width: 240, height: 90, resizeMode: 'contain' }} />
+          <Text style={{ fontSize: 52, fontWeight: '800', color: 'rgba(255,255,255,0.7)', letterSpacing: -1 }}>SIM</Text>
+        </View>
+        <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.85)', marginTop: 10, fontWeight: '500', letterSpacing: 1 }}>
+          Votre eSIM pour voyager
+        </Text>
+      </Animated.View>
+      <View style={{ position: 'absolute', bottom: 60 }}>
+        <ActivityIndicator color="rgba(255,255,255,0.6)" />
+      </View>
+    </LinearGradient>
+  )
+}
+
 export default function RootLayout() {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showSplash, setShowSplash] = useState(true)
   const router = useRouter()
   const segments = useSegments()
 
   useEffect(() => {
+    // Splash minimum 2.5 secondes
+    const splashTimer = setTimeout(() => setShowSplash(false), 2500)
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setLoading(false)
     })
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
       setSession(session)
     })
-    return () => subscription.unsubscribe()
+
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(splashTimer)
+    }
   }, [])
 
   useEffect(() => {
-    if (loading) return
+    if (loading || showSplash) return
     const inAuth = segments[0] === '(auth)'
     if (!session && !inAuth) router.replace('/(auth)/login')
     if (session && inAuth) router.replace('/(tabs)')
-  }, [session, loading, segments])
+  }, [session, loading, showSplash, segments])
 
-  // Deep link handler — retour depuis Stripe
-  useEffect(() => {
-    const handleUrl = (event: { url: string }) => {
-      const url = event.url
-      if (url.startsWith('fenuasim://payment-success')) {
-        const params = new URL(url.replace('fenuasim://', 'https://fenuasim.com/'))
-        const session_id = params.searchParams.get('session_id')
-        const package_id = params.searchParams.get('package_id')
-        router.push({ pathname: '/esim/payment-success', params: { session_id, package_id } })
-      }
-    }
-    const sub = Linking.addEventListener('url', handleUrl)
-    Linking.getInitialURL().then(url => { if (url) handleUrl({ url }) })
-    return () => sub.remove()
-  }, [])
-
-  if (loading) return (
-    <View style={{ flex:1, justifyContent:'center', alignItems:'center', backgroundColor: COLORS.bg }}>
-      <ActivityIndicator color={COLORS.violet} />
-    </View>
-  )
+  if (showSplash || loading) return <SplashScreen />
 
   return (
     <>
