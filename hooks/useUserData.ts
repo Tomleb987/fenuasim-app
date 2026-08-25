@@ -3,9 +3,7 @@ import { supabase } from '../lib/supabase'
 
 export function useUserData() {
   const [email, setEmail] = useState<string | null>(null)
-  const [esimOrders, setEsimOrders] = useState<any[]>([])
   const [insurances, setInsurances] = useState<any[]>([])
-  const [orders, setOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -17,18 +15,19 @@ export function useUserData() {
     })
   }, [])
 
+  // Les commandes eSIM (airalo_orders) et commandes site (orders) ne sont plus
+  // affichees sur l'ecran Compte (deja disponibles sur l'accueil) : on evite de
+  // les charger ici pour ne faire qu'une seule requete (insurances).
   async function fetchData(userEmail: string) {
     setLoading(true)
-    const [esimRes, insuranceRes, ordersRes] = await Promise.all([
-      supabase.from('airalo_orders').select('*').eq('email', userEmail).order('created_at', { ascending: false }),
-      supabase.from('insurances').select('*').eq('user_email', userEmail).order('created_at', { ascending: false }),
-      supabase.from('orders').select('*').eq('email', userEmail).order('created_at', { ascending: false }),
-    ])
-    if (esimRes.data) setEsimOrders(esimRes.data)
-    if (insuranceRes.data) setInsurances(insuranceRes.data)
-    if (ordersRes.data) setOrders(ordersRes.data)
+    const { data } = await supabase
+      .from('insurances')
+      .select('*')
+      .eq('user_email', userEmail)
+      .order('created_at', { ascending: false })
+    if (data) setInsurances(data)
     setLoading(false)
   }
 
-  return { email, esimOrders, insurances, orders, loading }
+  return { email, insurances, loading }
 }

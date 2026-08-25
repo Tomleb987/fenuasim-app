@@ -20,7 +20,7 @@ export default function RegisterScreen() {
     const { error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } })
     setLoading(false)
     if (error) Alert.alert('Erreur', error.message)
-    else { Alert.alert('Compte cree !', 'Verifiez votre email pour confirmer votre compte.'); router.replace('/(auth)/login') }
+    else { Alert.alert('Compte cree !', 'Vous pouvez maintenant vous connecter.'); router.replace('/(auth)/login') }
   }
 
   return (

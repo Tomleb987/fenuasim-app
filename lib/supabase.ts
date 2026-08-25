@@ -16,5 +16,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
+    // PKCE recommande par Supabase pour mobile : le code d'echange transite par
+    // deep link mais ne peut etre consomme que par l'appareil qui a initie la
+    // demande (code_verifier stocke localement) -- contrairement au flow implicite,
+    // aucun token n'est jamais expose directement dans l'URL du deep link.
+    flowType: 'pkce',
   },
 })

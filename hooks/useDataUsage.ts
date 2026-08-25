@@ -23,23 +23,12 @@ export function useDataUsage() {
     if (!iccid) return
     setLoadingMap(prev => ({ ...prev, [iccid]: true }))
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-
-      const response = await fetch(
-        'https://hptbhujyrhjsquckzckc.supabase.co/functions/v1/airalo-proxy',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + session.access_token,
-            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhwdGJodWp5cmhqc3F1Y2t6Y2tjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI4MzA0MTYsImV4cCI6MjA1ODQwNjQxNn0.SxQDUGu2tR_XewHc-3zVRmSIvCtbfr-E4jKzax1ze84',
-          },
-          body: JSON.stringify({ endpoint: '/sims/' + iccid + '/usage', method: 'GET' })
-        }
-      )
-
-      const data = await response.json()
+      // Passe par le client Supabase configure (lib/supabase.ts) plutot que par un
+      // fetch manuel : evite de dupliquer la cle anon en dur ici, et attache
+      // automatiquement la session courante.
+      const { data } = await supabase.functions.invoke('airalo-proxy', {
+        body: { endpoint: '/sims/' + iccid + '/usage', method: 'GET' },
+      })
       if (data?.success && data?.data?.data) {
         setUsageMap(prev => ({ ...prev, [iccid]: data.data.data }))
       }
@@ -71,7 +60,7 @@ export function useDataUsage() {
   function getRemainingStr(iccid: string): string {
     const u = usageMap[iccid]
     if (!u) return '-'
-    if (u.is_unlimited) return 'Illimite'
+    if (u.is_unlimited) return 'Illimité'
     return formatMo(u.remaining)
   }
 
@@ -79,5 +68,15 @@ export function useDataUsage() {
     return usageMap[iccid]?.expired_at ?? null
   }
 
-  return { fetchUsage, isLoading, getPct, getUsedStr, getRemainingStr, getExpiry }
+  // Un total a 0 Mo pour un forfait limite ne veut jamais dire "0 Mo achetes" :
+  // ca signifie que l'API n'a pas encore remonte la vraie capacite (ex: eSIM pas
+  // encore activee). Permet au rendu de distinguer "vraiment epuise" de "pas encore connu".
+  function hasReliableUsage(iccid: string): boolean {
+    const u = usageMap[iccid]
+    if (!u) return false
+    if (u.is_unlimited) return true
+    return u.total > 0
+  }
+
+  return { fetchUsage, isLoading, getPct, getUsedStr, getRemainingStr, getExpiry, hasReliableUsage }
 }

@@ -38,6 +38,9 @@ export default function LoginScreen() {
           <View style={s.inputWrap}>
             <TextInput style={s.input} placeholder="••••••••" placeholderTextColor="#aaa" value={password} onChangeText={setPassword} secureTextEntry />
           </View>
+          <TouchableOpacity style={s.forgotBtn} onPress={() => router.push('/(auth)/forgot-password')}>
+            <Text style={s.forgotTxt}>Mot de passe oublié ?</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={s.ctaWrap} onPress={handleLogin} disabled={loading}>
             <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.cta}>
               <Text style={s.ctaTxt}>{loading ? 'Connexion...' : 'Se connecter'}</Text>
@@ -63,6 +66,8 @@ const s = StyleSheet.create({
   label:{fontSize:12,fontWeight:'700',color:'#999',textTransform:'uppercase',letterSpacing:0.3,marginBottom:8},
   inputWrap:{backgroundColor:COLORS.bg,borderRadius:12,paddingHorizontal:14,paddingVertical:13,borderWidth:1,borderColor:COLORS.border,marginBottom:16},
   input:{fontSize:15,color:COLORS.text},
+  forgotBtn:{alignSelf:'flex-end',marginBottom:8},
+  forgotTxt:{fontSize:13,color:COLORS.textMuted,fontWeight:'600'},
   ctaWrap:{borderRadius:14,overflow:'hidden',marginTop:8},
   cta:{padding:16,alignItems:'center'},
   ctaTxt:{color:'#fff',fontSize:16,fontWeight:'800'},

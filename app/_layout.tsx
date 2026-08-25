@@ -47,19 +47,28 @@ export default function RootLayout() {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [showSplash, setShowSplash] = useState(true)
+  // Une session issue d'un lien de recuperation de mot de passe ne doit jamais
+  // etre traitee comme une connexion normale : sinon le garde ci-dessous
+  // renverrait l'utilisateur vers l'accueil authentifie au lieu de l'ecran de
+  // changement de mot de passe.
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false)
   const router = useRouter()
   const segments = useSegments()
 
   useEffect(() => {
-    // Splash minimum 2.5 secondes
-    const splashTimer = setTimeout(() => setShowSplash(false), 3000)
+    // Splash minimum 2.5 secondes (le rendu reste affiche tant que showSplash OU
+    // loading est vrai : ce timer fixe seulement le minimum, la verification de
+    // session peut le depasser si elle est plus lente).
+    const splashTimer = setTimeout(() => setShowSplash(false), 2500)
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') setIsPasswordRecovery(true)
+      if (event === 'SIGNED_OUT') setIsPasswordRecovery(false)
       setSession(session)
     })
 
@@ -72,9 +81,14 @@ export default function RootLayout() {
   useEffect(() => {
     if (loading || showSplash) return
     const inAuth = segments[0] === '(auth)'
+    if (isPasswordRecovery) {
+      const current: string[] = segments
+      if (current[1] !== 'reset-password') router.replace('/(auth)/reset-password')
+      return
+    }
     if (!session && !inAuth) router.replace('/(auth)/login')
     if (session && inAuth) router.replace('/(tabs)')
-  }, [session, loading, showSplash, segments])
+  }, [session, loading, showSplash, segments, isPasswordRecovery])
 
   if (showSplash || loading) return <SplashScreen />
 

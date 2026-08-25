@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "fenuasim-app",
+    "name": "FenuaSIM",
     "slug": "fenuasim-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -15,14 +15,16 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.fenuasim.app"
+      "bundleIdentifier": "com.fenuasim.app",
+      "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.fenuasim.app"
+      "package": "com.fenuasim.app",
+      "versionCode": 1
     },
     "web": {
       "favicon": "./assets/favicon.png",

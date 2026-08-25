@@ -4,14 +4,30 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
+import * as SecureStore from 'expo-secure-store'
 import { supabase } from '../../lib/supabase'
 import { COLORS } from '../../constants/theme'
+
+// Phase 4D : aucune contrainte DB ni webhook mobile distinct ne protege
+// aujourd'hui contre un second appel a /api/create-airalo-order pour le
+// meme paiement (audit PHASE4D_AIRALO_RLS.md -- airalo_orders n'a aucune
+// colonne stripe_session_id, seule une contrainte UNIQUE(order_id) Airalo
+// existe, qui n'empeche pas un second APPEL, seulement une seconde
+// insertion locale du meme resultat). Ce cache local, scope par
+// session_id Stripe, garantit qu'un remontage de cet ecran (retour app,
+// double ouverture du deep link, etc.) ne redeclenche jamais un second
+// appel reseau pour la meme session -- il reaffiche simplement le resultat
+// deja obtenu.
+function orderCacheKey(sessionId: string) {
+  return `esim_order_result_${sessionId}`
+}
 
 export default function PaymentSuccess() {
   const router = useRouter()
   const { session_id, package_id } = useLocalSearchParams<{ session_id: string, package_id: string }>()
   const [loading, setLoading] = useState(true)
   const [order, setOrder] = useState<any>(null)
+  const [pkg, setPkg] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -21,30 +37,42 @@ export default function PaymentSuccess() {
   async function createEsim() {
     setLoading(true)
     try {
+      // Un resultat deja obtenu pour cette session Stripe precise est
+      // reutilise tel quel -- jamais de second appel a l'API de creation.
+      const cached = await SecureStore.getItemAsync(orderCacheKey(session_id))
+      if (cached) {
+        const { order: cachedOrder, pkg: cachedPkg } = JSON.parse(cached)
+        setOrder(cachedOrder)
+        setPkg(cachedPkg)
+        setLoading(false)
+        return
+      }
+
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Non connecte')
 
       // Recuperer les infos du package
-      const { data: pkg } = await supabase
+      const { data: pkgData } = await supabase
         .from('airalo_packages')
         .select('*')
         .eq('id', package_id)
         .single()
 
-      if (!pkg) throw new Error('Package introuvable')
+      if (!pkgData) throw new Error('Package introuvable')
+      setPkg(pkgData)
 
       // Appel API Next.js fenuasim.com
       const response = await fetch('https://fenuasim.com/api/create-airalo-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          packageId: pkg.id,
-          airalo_id: pkg.airalo_id ?? pkg.slug,
+          packageId: pkgData.id,
+          airalo_id: pkgData.airalo_id ?? pkgData.slug,
           customerEmail: session.user.email,
           customerName: session.user.email,
           customerFirstname: '',
           quantity: 1,
-          description: `Mobile app - ${pkg.name}`,
+          description: `Mobile app - ${pkgData.name}`,
         })
       })
 
@@ -55,6 +83,13 @@ export default function PaymentSuccess() {
       }
 
       setOrder(data.order)
+
+      // Memorise le resultat reussi pour cette session precise -- protege
+      // tout remontage ulterieur de cet ecran contre un second appel.
+      await SecureStore.setItemAsync(
+        orderCacheKey(session_id),
+        JSON.stringify({ order: data.order, pkg: pkgData })
+      )
     } catch (e: any) {
       setError(e.message)
     } finally {
@@ -138,8 +173,27 @@ export default function PaymentSuccess() {
           </View>
         )}
 
+        {order?.sim_iccid && (
+          <TouchableOpacity
+            style={s.ctaWrap}
+            onPress={() => router.push({
+              pathname: '/esim/assign',
+              params: {
+                iccid: order.sim_iccid,
+                airaloOrderId: order.id ? String(order.id) : undefined,
+                destination: pkg?.region_fr || pkg?.name || '',
+              }
+            })}
+          >
+            <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.cta}>
+              <Ionicons name="person-add-outline" size={18} color="#fff" style={{marginRight:8}} />
+              <Text style={s.ctaTxt}>Attribuer cette eSIM</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity style={s.ghost} onPress={() => router.push('/(tabs)')}>
-          <Text style={s.ghostTxt}>Retour a l'accueil</Text>
+          <Text style={s.ghostTxt}>{order?.sim_iccid ? 'Plus tard' : "Retour a l'accueil"}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

@@ -17,7 +17,7 @@ HEAD INITIAL
 418e1a6
 
 HEAD FINAL
-418e1a6 (aucun commit fait — comme le reste du backlog déjà présent dans ce repo, tout reste dans l'arbre de travail ; committer n'a pas été demandé)
+8682ae2 (Phase 4F.1 — committé, voir addendum de clôture en fin de document)
 
 ================================
 RECHARGE
@@ -212,3 +212,66 @@ BLOQUANTS
 PRÊT POUR PHASE 4G
 OUI
 ```
+
+---
+
+## ADDENDUM — PHASE 4F.1 (CLÔTURE / HARDENING), 2026-08-25
+
+```text
+1. USAGES DE airalo_topups
+   Audité : stripe-webhook (branche mobile_topup) et retry-topup-orders sont
+   les SEULS écrivains (tous deux service_role). 3 autres Edge Functions
+   plausibles (create-payment, esim-instructions, send-esim-confirmation)
+   vérifiées individuellement : aucune référence. Aucun code mobile ne lit
+   ni n'écrit cette table.
+
+2. BESOIN CLIENT DIRECT
+   Aucun trouvé. esim_topup_orders (RLS scoped) couvre déjà le besoin de
+   lecture utilisateur pour le mobile.
+
+3. RLS ACTIVÉE
+   ✅ — relrowsecurity = true (vérifié par requête directe)
+
+4. GRANTS anon/authenticated RETIRÉS
+   ✅ — INSERT/SELECT/UPDATE/DELETE/TRUNCATE retirés ; seuls postgres et
+   service_role conservent des privilèges (vérifié via information_schema)
+
+5. ÉCRITURES RÉSERVÉES AU service_role
+   ✅ — confirmé par pg_roles.rolbypassrls = true pour service_role (garantie
+   de plateforme, vérifiée en direct, pas supposée) : le webhook/retry
+   continueront d'écrire normalement quelle que soit la RLS
+
+6. POLICY CLIENT
+   Aucune ajoutée (aucun besoin identifié à l'étape 2) — RLS activée + 0
+   policy = accès refusé par défaut à tout rôle ne bypassant pas RLS
+
+7. TEST anon
+   SELECT → 401 permission denied
+   INSERT → 401 permission denied
+
+8. TEST utilisateur authentifié (compte jetable réel, créé/nettoyé)
+   SELECT → 403 permission denied
+   INSERT → 403 permission denied
+   UPDATE → 403 permission denied
+   DELETE → 403 permission denied
+
+9. TEST écriture privilégiée (équivalent service_role, bypass RLS confirmé)
+   INSERT réel réussi, puis nettoyé (0 résidu)
+
+10. COMMIT
+    8682ae2 — 7 fichiers (les livrables mobiles de la Phase 4F uniquement ;
+    le reste du backlog préexistant dans ce repo n'a pas été touché, hors
+    périmètre de cette clôture)
+
+11. TYPECHECK
+    ✅ npx tsc --noEmit, 0 erreur
+
+12. EXPO DOCTOR
+    ✅ 18/18
+
+CONCLUSION 4F.1
+airalo_topups fermée à tout accès client (anon et authenticated), écriture
+service_role intacte et vérifiée, 0 régression. Travail mobile de la Phase 4F
+committé. Aucune donnée de test résiduelle.
+```
+

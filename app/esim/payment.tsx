@@ -68,7 +68,7 @@ export default function PaymentScreen() {
             <Text style={s.rowVal}>{params.data}</Text>
           </View>
           <View style={s.row}>
-            <Text style={s.rowLabel}>Duree</Text>
+            <Text style={s.rowLabel}>Durée</Text>
             <Text style={s.rowVal}>{params.days}</Text>
           </View>
           <View style={[s.row,{borderBottomWidth:0,marginTop:8}]}>

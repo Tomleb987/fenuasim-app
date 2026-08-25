@@ -27,7 +27,7 @@ export default function TabsLayout() {
         name="explore"
         options={{
           title: 'eSIM',
-          tabBarLabel: () => null,
+          tabBarLabel: 'Explorer',
           tabBarIcon: () => (
             <LinearGradient
               colors={['#D251D8', '#FD7F3C']}
@@ -35,6 +35,7 @@ export default function TabsLayout() {
               end={{ x: 1, y: 0 }}
               style={styles.pill}
             >
+              <Ionicons name="search" size={13} color="#fff" style={{ marginRight: 5 }} />
               <Text style={styles.pillText}>eSIM</Text>
             </LinearGradient>
           ),
@@ -63,8 +64,10 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderRadius: 24,
-    paddingHorizontal: 20,
+    paddingHorizontal: 18,
     paddingVertical: 9,
     marginBottom: 4,
   },
