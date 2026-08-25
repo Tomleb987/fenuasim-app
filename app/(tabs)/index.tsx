@@ -7,6 +7,10 @@ import { useRouter } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { COLORS } from '../../constants/theme'
 import { useDataUsage } from '../../hooks/useDataUsage'
+import { useTravelers } from '../../hooks/useTravelers'
+import { useDevices } from '../../hooks/useDevices'
+import { useEsimAssignments } from '../../hooks/useEsimAssignments'
+import { usePackageInfo, looksLikeTechnicalSlug } from '../../hooks/usePackageInfo'
 import dayjs from 'dayjs'
 
 const TOP_DEST = [
@@ -21,7 +25,11 @@ const TOP_DEST = [
 export default function HomeScreen() {
   const router = useRouter()
   const [esims, setEsims] = useState<any[]>([])
-  const { fetchUsage, getPct, getUsedStr, getRemainingStr, isLoading } = useDataUsage()
+  const { fetchUsage, getPct, getUsedStr, getRemainingStr, isLoading, hasReliableUsage } = useDataUsage()
+  const { travelers } = useTravelers()
+  const { devices } = useDevices()
+  const { byIccid: getAssignment } = useEsimAssignments()
+  const { fetchPackages, getPackageDisplay } = usePackageInfo()
 
   useEffect(() => { loadData() }, [])
 
@@ -37,6 +45,7 @@ export default function HomeScreen() {
     if (data) {
       setEsims(data)
       data.forEach(e => { if (e.sim_iccid) fetchUsage(e.sim_iccid) })
+      fetchPackages(data.map(e => e.package_id))
     }
   }
 
@@ -102,7 +111,25 @@ export default function HomeScreen() {
                 const remaining = iccid ? getRemainingStr(iccid) : null
                 const isExpired = e.expires_at && dayjs(e.expires_at).isBefore(dayjs())
                 const statusColor = isExpired ? '#999' : COLORS.success
-                const statusLabel = isExpired ? 'Expiree' : 'Active'
+                const statusLabel = isExpired ? 'Expirée' : 'Active'
+
+                const assignment = getAssignment(iccid)
+                const traveler = assignment?.traveler_id ? travelers.find(t => t.id === assignment.traveler_id) : undefined
+                const device = assignment?.device_id ? devices.find(d => d.id === assignment.device_id) : undefined
+                // Un assignment peut exister sans voyageur (ex: voyageur supprime -> traveler_id remis a null) :
+                // dans ce cas l'eSIM doit redevenir "non attribuee", pas garder son ancien label.
+                const isUnassigned = !assignment?.traveler_id
+                const pkgDisplay = getPackageDisplay(e.package_id)
+                // Un ancien label peut lui-meme contenir un slug technique (ex: eSIM
+                // attribuee avant la correction du fallback) : ne jamais l'afficher tel quel,
+                // mais ne jamais toucher non plus a un vrai label choisi par l'utilisateur.
+                const rawLabel = assignment?.label
+                const labelIsTechnical = rawLabel ? looksLikeTechnicalSlug(rawLabel, e.package_id) : false
+                const useLabel = !isUnassigned && !!rawLabel && !labelIsTechnical
+                const cardTitle = useLabel
+                  ? rawLabel
+                  : (traveler ? `${pkgDisplay.destination} • ${traveler.nickname || traveler.first_name}` : pkgDisplay.destination)
+                const last4 = iccid ? String(iccid).slice(-4) : null
 
                 return (
                   <View key={e.id} style={s.esimCard}>
@@ -111,11 +138,11 @@ export default function HomeScreen() {
                         <Ionicons name="wifi-outline" size={20} color={COLORS.violet} />
                       </View>
                       <View style={{flex:1}}>
-                        <Text style={s.esimTitle}>{e.package_id ?? 'eSIM'}</Text>
+                        <Text style={s.esimTitle}>{cardTitle}</Text>
                         <Text style={s.esimSub}>
                           {e.expires_at
-                            ? (isExpired ? 'Expiree le ' : 'Expire le ') + dayjs(e.expires_at).format('DD/MM/YYYY')
-                            : 'Commandee le ' + dayjs(e.created_at).format('DD/MM/YYYY')
+                            ? (isExpired ? 'Expirée le ' : 'Expire le ') + dayjs(e.expires_at).format('DD/MM/YYYY')
+                            : 'Commandée le ' + dayjs(e.created_at).format('DD/MM/YYYY')
                           }
                         </Text>
                       </View>
@@ -124,10 +151,59 @@ export default function HomeScreen() {
                       </View>
                     </View>
 
+                    {(pkgDisplay.subtitle || traveler || device) && (
+                      <View style={s.assignRow}>
+                        {pkgDisplay.subtitle && (
+                          <View style={s.assignChip}>
+                            <Ionicons name="server-outline" size={12} color={COLORS.violet} />
+                            <Text style={s.assignChipTxt}>{pkgDisplay.subtitle}</Text>
+                          </View>
+                        )}
+                        {traveler && (
+                          <View style={s.assignChip}>
+                            <Ionicons name="person-outline" size={12} color={COLORS.violet} />
+                            <Text style={s.assignChipTxt}>{traveler.nickname || traveler.first_name}</Text>
+                          </View>
+                        )}
+                        {device && (
+                          <View style={s.assignChip}>
+                            <Ionicons name="phone-portrait-outline" size={12} color={COLORS.violet} />
+                            <Text style={s.assignChipTxt}>{device.name}</Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
+
+                    {isUnassigned && iccid && (
+                      <TouchableOpacity
+                        style={s.unassignedRow}
+                        onPress={() => router.push({
+                          pathname: '/esim/assign',
+                          params: {
+                            iccid,
+                            airaloOrderId: e.id,
+                            destination: pkgDisplay.destination,
+                            packageLabel: pkgDisplay.subtitle ?? undefined,
+                          }
+                        })}
+                      >
+                        <View style={{flex:1}}>
+                          <Text style={s.unassignedTxt}>Non attribuee {last4 ? `· ••••${last4}` : ''}</Text>
+                        </View>
+                        <Text style={s.assignLink}>Attribuer</Text>
+                        <Ionicons name="chevron-forward" size={14} color={COLORS.violet} />
+                      </TouchableOpacity>
+                    )}
+
                     {loading ? (
                       <View style={s.consoRow}>
                         <ActivityIndicator size="small" color={COLORS.violet} />
                         <Text style={s.consoLoading}>Chargement conso...</Text>
+                      </View>
+                    ) : used && used !== '-' && !(iccid && hasReliableUsage(iccid)) ? (
+                      <View style={s.consoRow}>
+                        <Ionicons name="time-outline" size={14} color={COLORS.textMuted} />
+                        <Text style={s.consoLoading}>Consommation pas encore disponible</Text>
                       </View>
                     ) : used && used !== '-' ? (
                       <View style={s.consoWrap}>
@@ -143,7 +219,7 @@ export default function HomeScreen() {
                           <LinearGradient
                             colors={pct > 80 ? ['#FD7F3C','#e74c3c'] : ['#D251D8','#FD7F3C']}
                             start={{x:0,y:0}} end={{x:1,y:0}}
-                            style={[s.barFill,{width: pct + '%'}]}
+                            style={[s.barFill,{width: `${pct}%`}]}
                           />
                         </View>
                         <View style={s.consoFooter}>
@@ -180,6 +256,32 @@ export default function HomeScreen() {
                         <Text style={s.installTxt}>Installer l'eSIM</Text>
                       </TouchableOpacity>
                     )}
+
+                    {iccid && !isExpired && (
+                      <TouchableOpacity
+                        style={s.installBtn}
+                        onPress={() => router.push({
+                          pathname: '/esim/topup',
+                          params: { iccid, destination: pkgDisplay.destination },
+                        })}
+                      >
+                        <Ionicons name="add-circle-outline" size={14} color={COLORS.violet} />
+                        <Text style={s.installTxt}>Recharger mon eSIM</Text>
+                      </TouchableOpacity>
+                    )}
+
+                    <TouchableOpacity
+                      style={s.helpBtn}
+                      onPress={() => router.push({
+                        pathname: '/support',
+                        // Jamais l'ICCID complet dans une route : seuls le libelle deja
+                        // resolu et les 4 derniers chiffres suffisent au support.
+                        params: { label: cardTitle, last4: last4 ?? '' }
+                      })}
+                    >
+                      <Ionicons name="headset-outline" size={13} color={COLORS.textMuted} />
+                      <Text style={s.helpTxt}>Besoin d'aide ?</Text>
+                    </TouchableOpacity>
                   </View>
                 )
               })}
@@ -247,6 +349,12 @@ const s = StyleSheet.create({
   esimSub:{fontSize:12,color:COLORS.textMuted,marginTop:2},
   pill:{paddingHorizontal:10,paddingVertical:4,borderRadius:20},
   pillTxt:{fontSize:11,fontWeight:'700'},
+  assignRow:{flexDirection:'row',gap:6,marginBottom:10},
+  assignChip:{flexDirection:'row',alignItems:'center',gap:4,backgroundColor:'rgba(210,81,216,0.08)',borderRadius:20,paddingHorizontal:9,paddingVertical:4},
+  assignChipTxt:{fontSize:11,fontWeight:'700',color:COLORS.violet},
+  unassignedRow:{flexDirection:'row',alignItems:'center',gap:6,backgroundColor:'#FFF8E6',borderRadius:10,paddingHorizontal:10,paddingVertical:9,marginBottom:10},
+  unassignedTxt:{fontSize:12,color:'#9A6200',fontWeight:'600'},
+  assignLink:{fontSize:12,fontWeight:'700',color:COLORS.violet},
   consoRow:{flexDirection:'row',alignItems:'center',gap:8,paddingVertical:4},
   consoLoading:{fontSize:12,color:COLORS.textMuted},
   consoWrap:{marginBottom:6},
@@ -267,6 +375,8 @@ const s = StyleSheet.create({
   chipTxt:{fontSize:12,fontWeight:'600',color:'#555'},
   installBtn:{flexDirection:'row',alignItems:'center',gap:6,paddingTop:8,borderTopWidth:0.5,borderTopColor:'#f0f0f0',marginTop:6},
   installTxt:{color:COLORS.violet,fontSize:13,fontWeight:'600'},
+  helpBtn:{flexDirection:'row',alignItems:'center',gap:5,paddingTop:8,marginTop:2},
+  helpTxt:{color:COLORS.textMuted,fontSize:12,fontWeight:'600'},
   grid:{flexDirection:'row',flexWrap:'wrap',gap:10},
   gridCard:{backgroundColor:'#fff',borderRadius:16,padding:14,alignItems:'center',width:'47%',shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
   gridIcon:{width:44,height:44,borderRadius:12,justifyContent:'center',alignItems:'center',marginBottom:8},
