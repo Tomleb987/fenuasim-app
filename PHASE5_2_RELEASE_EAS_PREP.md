@@ -19,10 +19,10 @@ HEAD INITIAL
 8682ae2 (déjà poussé sur origin/main)
 
 HEAD FINAL
-8682ae2 (inchangé — aucun commit fait pendant cet audit, voir ci-dessous)
+be9db6d (commit de rattrapage, poussé sur origin/main — voir ADDENDUM en fin de document)
 
 WORKTREE CLEAN
-NON
+OUI (hors une capture d'écran hors-sujet, volontairement laissée non trackée)
 
 COMMITS
 1 seul commit depuis le début de cette session (8682ae2, Phase 4F/4F.1), déjà poussé.
@@ -73,7 +73,7 @@ VERSION
 
 ```text
 APP NAME
-FenuaSIM (arbre de travail) — ⚠️ toujours "fenuasim-app" dans le dernier commit
+FenuaSIM ✅ (committé)
 
 VERSION
 1.0.0
@@ -82,13 +82,13 @@ IOS BUNDLE ID
 com.fenuasim.app
 
 IOS BUILD NUMBER
-1 (arbre de travail) — ⚠️ absent dans le dernier commit
+1 ✅ (committé)
 
 ANDROID PACKAGE
 com.fenuasim.app
 
 ANDROID VERSION CODE
-1 (arbre de travail) — ⚠️ absent dans le dernier commit
+1 ✅ (committé)
 ```
 
 Aucune build store n'a jamais été envoyée (confirmé par la Phase 5 précédente :
@@ -157,7 +157,7 @@ BRANDING
 
 ```text
 APP NAME
-✅ (arbre de travail) / ⚠️ non encore commité
+✅ committé
 
 ICON
 ✅ — assets/icon.png présent, 1024×1024, PNG valide
@@ -300,15 +300,16 @@ NON (même blocage) — non prioritaire, Phase 7
 BLOQUANTS
 1. EAS non authentifié (`eas whoami` → Not logged in)
 2. Projet EAS jamais initialisé (extra.eas.projectId absent)
-3. Git non propre — décision nécessaire sur comment committer le backlog
-   pré-existant (voir section GIT ci-dessus)
-4. Aucun lien CGV/confidentialité trouvé dans l'app — pas bloquant pour le
+3. Aucun lien CGV/confidentialité trouvé dans l'app — pas bloquant pour le
    build lui-même, mais sera exigé par App Store Connect en Phase 6
 
+RÉSOLU PENDANT CETTE PHASE
+Git propre — commit de rattrapage `be9db6d` (56 fichiers, Phases 1-5 +
+multi-eSIM + polish 5.1, jamais committées jusqu'ici), poussé sur origin/main.
+
 ACTION UTILISATEUR
-1. Choisir comment committer (voir question posée séparément)
-2. `eas login` (dans ce terminal, ou confirmez que c'est déjà fait ailleurs)
-3. Une fois fait, je relance : `eas init` (lier le projet) puis
+1. `eas login` (dans ce terminal, ou confirmez que c'est déjà fait ailleurs)
+2. Une fois fait, je relance : `eas init` (lier le projet) puis
    `eas build --platform ios --profile production`
 
 PRÊT POUR PHASE 6 TESTFLIGHT
