@@ -2,7 +2,7 @@
 // l'accueil plafonne a 3 eSIM (limit(3)) sans lien "voir tout", et "Mes eSIM"
 // dans le compte renvoyait vers l'accueil au lieu d'une vraie liste.
 import React, { useEffect, useState } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -12,6 +12,7 @@ import { COLORS } from '../../constants/theme'
 import { useTravelers } from '../../hooks/useTravelers'
 import { useEsimAssignments } from '../../hooks/useEsimAssignments'
 import { usePackageInfo, looksLikeTechnicalSlug } from '../../hooks/usePackageInfo'
+import { getEsimStatus } from '../../lib/esimStatus'
 import dayjs from 'dayjs'
 
 export default function AllEsimsScreen() {
@@ -28,16 +29,49 @@ export default function AllEsimsScreen() {
     setLoading(true)
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user?.email) { setLoading(false); return }
-    const { data } = await supabase
-      .from('airalo_orders')
-      .select('*')
-      .eq('email', session.user.email)
-      .order('created_at', { ascending: false })
+    const [{ data }, { data: hidden }] = await Promise.all([
+      supabase
+        .from('airalo_orders')
+        .select('*')
+        .eq('email', session.user.email)
+        .order('created_at', { ascending: false }),
+      session.user.id
+        ? supabase.from('esim_hidden_orders').select('order_id').eq('user_id', session.user.id)
+        : Promise.resolve({ data: [] as { order_id: string }[] }),
+    ])
     if (data) {
-      setEsims(data)
-      fetchPackages(data.map((e) => e.package_id))
+      const hiddenIds = new Set((hidden ?? []).map((h) => h.order_id))
+      const visible = data.filter((e) => !hiddenIds.has(e.id))
+      setEsims(visible)
+      fetchPackages(visible.map((e) => e.package_id))
     }
     setLoading(false)
+  }
+
+  function handleHide(orderId: string, label: string) {
+    Alert.alert(
+      'Masquer cette eSIM ?',
+      `"${label}" ne sera plus affichée dans cette liste. Cette action n'affecte pas votre eSIM ni votre historique de commande — elle reste consultable par le support si besoin.`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Masquer',
+          style: 'destructive',
+          onPress: async () => {
+            const { data: { session } } = await supabase.auth.getSession()
+            if (!session?.user?.id) return
+            const { error } = await supabase
+              .from('esim_hidden_orders')
+              .insert({ user_id: session.user.id, order_id: orderId })
+            if (error) {
+              Alert.alert('Erreur', "Impossible de masquer cette eSIM, veuillez réessayer.")
+              return
+            }
+            setEsims((prev) => prev.filter((e) => e.id !== orderId))
+          },
+        },
+      ]
+    )
   }
 
   function resolveLabel(e: any): string {
@@ -77,8 +111,7 @@ export default function AllEsimsScreen() {
           {esims.map((e) => {
             const iccid = e.sim_iccid
             const last4 = iccid ? String(iccid).slice(-4) : null
-            const isExpired = e.expires_at && dayjs(e.expires_at).isBefore(dayjs())
-            const statusColor = isExpired ? COLORS.textMuted : COLORS.success
+            const { label: statusLabel, color: statusColor, isExpired } = getEsimStatus(e)
             const label = resolveLabel(e)
 
             return (
@@ -97,7 +130,7 @@ export default function AllEsimsScreen() {
                     </Text>
                   </View>
                   <View style={[s.pill, { backgroundColor: statusColor + '20' }]}>
-                    <Text style={[s.pillTxt, { color: statusColor }]}>{isExpired ? 'Expirée' : 'Active'}</Text>
+                    <Text style={[s.pillTxt, { color: statusColor }]}>{statusLabel}</Text>
                   </View>
                 </View>
 
@@ -118,6 +151,12 @@ export default function AllEsimsScreen() {
                     <Ionicons name="headset-outline" size={14} color={COLORS.textMuted} />
                     <Text style={[s.actionTxt, { color: COLORS.textMuted }]}>Aide</Text>
                   </TouchableOpacity>
+                  {isExpired && (
+                    <TouchableOpacity style={s.actionBtn} onPress={() => handleHide(e.id, label)}>
+                      <Ionicons name="eye-off-outline" size={14} color="#B00020" />
+                      <Text style={[s.actionTxt, { color: '#B00020' }]}>Masquer</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
             )

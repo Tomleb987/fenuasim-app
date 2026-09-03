@@ -1,15 +1,22 @@
 import React, { useState } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Linking } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Linking } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { COLORS } from '../../constants/theme'
+import { useCurrency } from '../../lib/currency'
+import { validateEsimPromoCode } from '../../hooks/usePromoCode'
 
 export default function PaymentScreen() {
   const router = useRouter()
+  const { formatXpf } = useCurrency()
   const [loading, setLoading] = useState(false)
+  const [promoCode, setPromoCode] = useState('')
+  const [promoStatus, setPromoStatus] = useState<'idle' | 'loading' | 'valid' | 'invalid'>('idle')
+  const [promoError, setPromoError] = useState('')
+  const [discountedPrice, setDiscountedPrice] = useState<number | null>(null)
   const params = useLocalSearchParams<{
     packageId: string
     packageName: string
@@ -18,6 +25,22 @@ export default function PaymentScreen() {
     data: string
     country: string
   }>()
+
+  const finalPrice = discountedPrice ?? parseInt(params.price)
+
+  async function handleApplyPromo() {
+    if (!promoCode.trim()) return
+    setPromoStatus('loading')
+    const result = await validateEsimPromoCode(promoCode.trim(), parseInt(params.price))
+    if (result.isValid) {
+      setDiscountedPrice(result.discountedPriceXpf)
+      setPromoStatus('valid')
+    } else {
+      setDiscountedPrice(null)
+      setPromoError(result.error ?? 'Code promo invalide')
+      setPromoStatus('invalid')
+    }
+  }
 
   async function handlePayment() {
     setLoading(true)
@@ -30,6 +53,7 @@ export default function PaymentScreen() {
           packageId: params.packageId,
           customerEmail: session.user.email,
           customerName: session.user.email,
+          ...(promoStatus === 'valid' ? { promoCode: promoCode.trim() } : {}),
         }
       })
 
@@ -74,10 +98,36 @@ export default function PaymentScreen() {
             <Text style={s.rowLabel}>Durée</Text>
             <Text style={s.rowVal}>{params.days}</Text>
           </View>
+          {promoStatus === 'valid' && (
+            <View style={s.row}>
+              <Text style={s.rowLabel}>Code promo</Text>
+              <Text style={[s.rowVal,{color:COLORS.success}]}>{promoCode.trim().toUpperCase()}</Text>
+            </View>
+          )}
           <View style={[s.row,{borderBottomWidth:0,marginTop:8}]}>
             <Text style={s.totalLabel}>Total</Text>
-            <Text style={s.totalVal}>{parseInt(params.price).toLocaleString()} XPF</Text>
+            <Text style={s.totalVal}>{formatXpf(finalPrice)}</Text>
           </View>
+        </View>
+
+        <View style={s.promoCard}>
+          <Text style={s.promoLabel}>Code promo</Text>
+          <View style={s.promoRow}>
+            <TextInput
+              style={s.promoInput}
+              placeholder="Ex: BIENVENUE10"
+              placeholderTextColor="#aaa"
+              autoCapitalize="characters"
+              value={promoCode}
+              onChangeText={(v) => { setPromoCode(v); setPromoStatus('idle'); setDiscountedPrice(null) }}
+              editable={promoStatus !== 'loading'}
+            />
+            <TouchableOpacity style={s.promoBtn} onPress={handleApplyPromo} disabled={!promoCode.trim() || promoStatus === 'loading'}>
+              {promoStatus === 'loading' ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.promoBtnTxt}>Appliquer</Text>}
+            </TouchableOpacity>
+          </View>
+          {promoStatus === 'valid' && <Text style={s.promoValid}>Code appliqué avec succès</Text>}
+          {promoStatus === 'invalid' && <Text style={s.promoInvalid}>{promoError}</Text>}
         </View>
 
         <View style={s.infoBox}>
@@ -98,7 +148,7 @@ export default function PaymentScreen() {
               ? <ActivityIndicator color="#fff" />
               : <>
                   <Ionicons name="card-outline" size={20} color="#fff" style={{marginRight:8}} />
-                  <Text style={s.ctaTxt}>Payer {parseInt(params.price).toLocaleString()} XPF</Text>
+                  <Text style={s.ctaTxt}>Payer {formatXpf(finalPrice)}</Text>
                 </>
             }
           </LinearGradient>
@@ -122,6 +172,14 @@ const s = StyleSheet.create({
   rowVal:{fontSize:13,fontWeight:'600',color:COLORS.text},
   totalLabel:{fontSize:15,fontWeight:'700',color:COLORS.text},
   totalVal:{fontSize:20,fontWeight:'800',color:COLORS.violet},
+  promoCard:{backgroundColor:'#fff',borderRadius:16,padding:16,marginBottom:12,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
+  promoLabel:{fontSize:12,fontWeight:'700',color:COLORS.textMuted,textTransform:'uppercase',letterSpacing:0.3,marginBottom:8},
+  promoRow:{flexDirection:'row',gap:10},
+  promoInput:{flex:1,backgroundColor:COLORS.bg,borderRadius:12,paddingHorizontal:14,paddingVertical:12,fontSize:14,color:COLORS.text,borderWidth:1,borderColor:COLORS.border},
+  promoBtn:{backgroundColor:COLORS.violet,borderRadius:12,paddingHorizontal:16,justifyContent:'center',alignItems:'center'},
+  promoBtnTxt:{color:'#fff',fontWeight:'700',fontSize:13},
+  promoValid:{fontSize:12,color:COLORS.success,marginTop:8,fontWeight:'600'},
+  promoInvalid:{fontSize:12,color:'#B00020',marginTop:8,fontWeight:'600'},
   infoBox:{flexDirection:'row',alignItems:'flex-start',gap:10,backgroundColor:'rgba(210,81,216,0.06)',borderRadius:12,padding:12,marginBottom:12},
   infoTxt:{fontSize:13,color:COLORS.text,flex:1,lineHeight:20},
   secureBox:{flexDirection:'row',alignItems:'center',gap:8,backgroundColor:'#E6F9F2',borderRadius:10,padding:10},

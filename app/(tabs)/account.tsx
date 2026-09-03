@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router'
 import { COLORS } from '../../constants/theme'
 import { useUserData } from '../../hooks/useUserData'
 import { supabase } from '../../lib/supabase'
+import { useCurrency, CurrencyCode } from '../../lib/currency'
 import dayjs from 'dayjs'
 
 // Noms produits reels observes en base (product_type) -> libelle lisible.
@@ -25,6 +26,7 @@ function humanizeInsuranceProduct(productType: string | null | undefined): strin
 export default function AccountScreen() {
   const router = useRouter()
   const { email, insurances, loading } = useUserData()
+  const { currency, setCurrency } = useCurrency()
   const [fullName, setFullName] = useState<string | null>(null)
 
   useEffect(() => { loadProfile() }, [])
@@ -165,6 +167,23 @@ export default function AccountScreen() {
           <Ionicons name="chevron-forward" size={18} color="#ccc" />
         </TouchableOpacity>
 
+        <Text style={s.secTitle}>Préférences</Text>
+        <View style={s.card}>
+          <View style={[s.profileRow,{borderBottomWidth:0}]}>
+            <View style={s.simIcon}>
+              <Ionicons name="pricetags-outline" size={20} color={COLORS.violet} />
+            </View>
+            <Text style={[s.profileRowTxt,{flex:1}]}>Devise d'affichage</Text>
+            <View style={s.currencyToggle}>
+              {(['XPF', 'EUR'] as CurrencyCode[]).map((c) => (
+                <TouchableOpacity key={c} style={[s.currencyChip, currency === c && s.currencyChipSel]} onPress={() => setCurrency(c)}>
+                  <Text style={[s.currencyChipTxt, currency === c && s.currencyChipTxtSel]}>{c}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+
         <Text style={s.secTitle}>Aide</Text>
         <View style={s.card}>
           <TouchableOpacity style={s.profileRow} onPress={() => router.push('/support')}>
@@ -209,6 +228,11 @@ const s = StyleSheet.create({
   card:{backgroundColor:'#fff',borderRadius:16,padding:16,marginBottom:10,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
   profileRow:{flexDirection:'row',alignItems:'center',gap:12,paddingVertical:10,borderBottomWidth:0.5,borderBottomColor:'#f5f5f5'},
   profileRowTxt:{flex:1,fontSize:14,fontWeight:'600',color:COLORS.text},
+  currencyToggle:{flexDirection:'row',backgroundColor:COLORS.bg,borderRadius:10,padding:3,gap:2},
+  currencyChip:{paddingHorizontal:12,paddingVertical:6,borderRadius:8},
+  currencyChipSel:{backgroundColor:'#fff',shadowColor:'#000',shadowOpacity:0.08,shadowRadius:3,elevation:1},
+  currencyChipTxt:{fontSize:12,fontWeight:'700',color:COLORS.textMuted},
+  currencyChipTxtSel:{color:COLORS.violet},
   cardHead:{flexDirection:'row',alignItems:'center',gap:10},
   simIcon:{width:44,height:44,borderRadius:12,backgroundColor:'rgba(210,81,216,0.1)',justifyContent:'center',alignItems:'center'},
   shieldIcon:{width:44,height:44,borderRadius:12,backgroundColor:'rgba(253,127,60,0.1)',justifyContent:'center',alignItems:'center'},

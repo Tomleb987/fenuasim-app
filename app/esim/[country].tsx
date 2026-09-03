@@ -7,7 +7,8 @@ import { useRouter, useLocalSearchParams } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { COLORS } from '../../constants/theme'
 import { getFR } from '../../lib/regionNames'
-import { getPlanType, getPlanTypeLabel, getPlanTypeIcon, INTERNET_ONLY_CAPTION, INTERNET_ONLY_EXPLANATION, PlanCoverageType } from '../../hooks/usePackageInfo'
+import { getPlanType, getPlanTypeLabel, getPlanTypeIcon, parseVoiceSmsVolume, INTERNET_ONLY_CAPTION, INTERNET_ONLY_EXPLANATION, PlanCoverageType } from '../../hooks/usePackageInfo'
+import { useCurrency } from '../../lib/currency'
 
 const GRAD: Record<string, [string, string]> = {
   'Japan': ['#FF6B6B', '#FF8E53'],
@@ -69,6 +70,7 @@ function matchesTypeFilter(t: PlanCoverageType, f: TypeFilter): boolean {
 
 export default function CountryDetail() {
   const router = useRouter()
+  const { formatXpf } = useCurrency()
   const { country: slug } = useLocalSearchParams<{ country: string }>()
   const [plans, setPlans] = useState<Pkg[]>([])
   const [selected, setSelected] = useState<string | null>(null)
@@ -91,6 +93,7 @@ export default function CountryDetail() {
       .select('id, name, region_fr, data_amount, data_unit, validity_days, validity, final_price_xpf, is_unlimited, available_topup, operator_name, includes_voice, includes_sms, networks, type')
       .eq('status', 'active')
       .eq('slug', s)
+      .gt('final_price_xpf', 0)
       .order('final_price_xpf', { ascending: true })
     if (err) { setError(true); setLoading(false); return }
     if (data && data.length > 0) {
@@ -105,7 +108,12 @@ export default function CountryDetail() {
         return (a.final_price_xpf ?? 0) - (b.final_price_xpf ?? 0)
       })
       setPlans(sorted as Pkg[])
-      setSelected(sorted[0].id)
+      // Preselectionne le forfait au prix le plus bas (coherent avec le "Des X
+      // XPF" affiche sur l'accueil/explorer), pas simplement le premier de la
+      // liste triee par volume de donnees -- sinon le prix mis en avant ici
+      // peut etre plus eleve que celui annonce plus tot dans le parcours.
+      const cheapest = sorted.reduce((min, p) => (p.final_price_xpf ?? 0) < (min.final_price_xpf ?? 0) ? p : min, sorted[0])
+      setSelected(cheapest.id)
       setCountryName(sorted[0].region_fr ?? s)
     } else {
       setPlans([])
@@ -140,6 +148,7 @@ export default function CountryDetail() {
   const isMultiNetwork = networks.length > 1
   const isLocalPackage = sel?.type === 'local'
   const selPlanType = sel ? getPlanType(sel) : null
+  const selVolume = sel ? parseVoiceSmsVolume(sel.name) : undefined
   const selIsInternetOnly = selPlanType === 'internet'
 
   function goToPayment() {
@@ -269,6 +278,7 @@ export default function CountryDetail() {
           }
           renderItem={({ item: p }) => {
             const planType = getPlanType(p)
+            const volume = parseVoiceSmsVolume(p.name)
             const isSel = selected === p.id
             return (
               <TouchableOpacity
@@ -279,11 +289,11 @@ export default function CountryDetail() {
                   <Ionicons name={isSel ? 'radio-button-on' : 'radio-button-off'} size={20} color={isSel ? COLORS.violet : '#ccc'} />
                   <Text style={s.planRowData}>{getDataLabel(p)}</Text>
                   <Text style={s.planRowDuration}>{getDurationLabel(p)}</Text>
-                  <Text style={s.planRowPrice}>{Math.round(p.final_price_xpf).toLocaleString()} XPF</Text>
+                  <Text style={s.planRowPrice}>{formatXpf(p.final_price_xpf)}</Text>
                 </View>
                 <View style={s.planRowTypeWrap}>
                   <Ionicons name={getPlanTypeIcon(planType)} size={12} color={COLORS.violet} />
-                  <Text style={s.planRowTypeTxt}>{getPlanTypeLabel(planType)}</Text>
+                  <Text style={s.planRowTypeTxt}>{getPlanTypeLabel(planType, volume)}</Text>
                   {planType === 'internet' && <Text style={s.planRowCaption}>{INTERNET_ONLY_CAPTION}</Text>}
                 </View>
               </TouchableOpacity>
@@ -304,7 +314,7 @@ export default function CountryDetail() {
                   <Text style={s.recapLabel}>Type</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                     <Ionicons name={getPlanTypeIcon(selPlanType!)} size={13} color={COLORS.violet} />
-                    <Text style={s.recapVal}>{getPlanTypeLabel(selPlanType!)}</Text>
+                    <Text style={s.recapVal}>{getPlanTypeLabel(selPlanType!, selVolume)}</Text>
                   </View>
                 </View>
                 {!isLocalPackage && (
@@ -329,11 +339,15 @@ export default function CountryDetail() {
                 )}
                 <View style={s.recapRow}>
                   <Text style={s.recapLabel}>{selIsInternetOnly ? 'Appels classiques' : 'Appels'}</Text>
-                  <Text style={s.recapVal}>{sel.includes_voice ? 'Inclus' : 'Non inclus'}</Text>
+                  <Text style={s.recapVal}>
+                    {sel.includes_voice ? (selVolume?.minutes != null ? `${selVolume.minutes} min` : 'Inclus') : 'Non inclus'}
+                  </Text>
                 </View>
                 <View style={[s.recapRow, { borderBottomWidth: 0 }]}>
                   <Text style={s.recapLabel}>{selIsInternetOnly ? 'SMS classiques' : 'SMS'}</Text>
-                  <Text style={s.recapVal}>{sel.includes_sms ? 'Inclus' : 'Non inclus'}</Text>
+                  <Text style={s.recapVal}>
+                    {sel.includes_sms ? (selVolume?.sms != null ? `${selVolume.sms} SMS` : 'Inclus') : 'Non inclus'}
+                  </Text>
                 </View>
               </View>
 
@@ -357,12 +371,12 @@ export default function CountryDetail() {
           <View style={s.selectionSummary}>
             <Text style={s.selectionSummaryTitle}>Votre choix</Text>
             <Text style={s.selectionSummaryTxt}>
-              {getDataLabel(sel)} • {getDurationLabel(sel)} · {getPlanTypeLabel(selPlanType!)}
+              {getDataLabel(sel)} • {getDurationLabel(sel)} · {getPlanTypeLabel(selPlanType!, selVolume)}
             </Text>
           </View>
           <TouchableOpacity style={s.ctaWrap} onPress={goToPayment}>
             <LinearGradient colors={['#D251D8', '#FD7F3C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.ctaBtn}>
-              <Text style={s.ctaTxt}>Acheter · {Math.round(sel.final_price_xpf).toLocaleString()} XPF</Text>
+              <Text style={s.ctaTxt}>Acheter · {formatXpf(sel.final_price_xpf)}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>

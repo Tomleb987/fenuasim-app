@@ -12,6 +12,8 @@ import { useDevices } from '../../hooks/useDevices'
 import { useEsimAssignments } from '../../hooks/useEsimAssignments'
 import { usePackageInfo, looksLikeTechnicalSlug } from '../../hooks/usePackageInfo'
 import { getFR } from '../../lib/regionNames'
+import { useCurrency } from '../../lib/currency'
+import { getEsimStatus } from '../../lib/esimStatus'
 import dayjs from 'dayjs'
 
 // Ordre d'affichage voulu pour les forfaits regionaux ; seules les regions
@@ -65,6 +67,7 @@ function ConsoGauge({ pct, used, remaining }: { pct: number; used: string; remai
 
 export default function HomeScreen() {
   const router = useRouter()
+  const { formatXpf } = useCurrency()
   const [esims, setEsims] = useState<any[]>([])
   const [regions, setRegions] = useState<{ nameFR: string; slug: string; minPrice: number; key: string }[]>([])
   const { fetchUsage, getPct, getUsedStr, getRemainingStr, isLoading, hasReliableUsage } = useDataUsage()
@@ -170,7 +173,7 @@ export default function HomeScreen() {
                   >
                     <Text style={s.regionIcon}>{REGION_ICON[r.key] ?? '🌐'}</Text>
                     <Text style={s.regionName}>{r.nameFR}</Text>
-                    <Text style={s.regionPrice}>Dès {Math.round(r.minPrice).toLocaleString()} XPF</Text>
+                    <Text style={s.regionPrice}>Dès {formatXpf(r.minPrice)}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -191,9 +194,7 @@ export default function HomeScreen() {
                 const loading = iccid ? isLoading(iccid) : false
                 const used = iccid ? getUsedStr(iccid) : null
                 const remaining = iccid ? getRemainingStr(iccid) : null
-                const isExpired = e.expires_at && dayjs(e.expires_at).isBefore(dayjs())
-                const statusColor = isExpired ? COLORS.textMuted : COLORS.success
-                const statusLabel = isExpired ? 'Expirée' : 'Active'
+                const { label: statusLabel, color: statusColor, isExpired } = getEsimStatus(e)
 
                 const assignment = getAssignment(iccid)
                 const traveler = assignment?.traveler_id ? travelers.find(t => t.id === assignment.traveler_id) : undefined

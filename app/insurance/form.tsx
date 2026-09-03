@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { COLORS, EUR_TO_XPF } from '../../constants/theme'
+import { useCurrency } from '../../lib/currency'
 import { supabase } from '../../lib/supabase'
 import {
   INSURANCE_PRODUCTS,
@@ -98,6 +99,7 @@ function ageFromBirthDate(birthDate: string): number | null {
 
 export default function InsuranceForm() {
   const router = useRouter()
+  const { formatXpf } = useCurrency()
   const { quoting, premium, fetchQuote, checkingOut, checkout, promoStatus, promoDiscount, checkPromoCode } = useInsuranceQuote()
   const [step, setStep] = useState(1)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -489,8 +491,8 @@ export default function InsuranceForm() {
               ) : premium != null ? (
                 <>
                   <Text style={s.quoteLabel}>Tarif estimé</Text>
-                  <Text style={s.quoteValue}>{totalEur?.toFixed(2)} €</Text>
-                  <Text style={s.quoteSub}>≈ {Math.round((totalEur ?? 0) * EUR_TO_XPF).toLocaleString('fr-FR')} XPF · frais de service inclus</Text>
+                  <Text style={s.quoteValue}>{formatXpf((totalEur ?? 0) * EUR_TO_XPF)}</Text>
+                  <Text style={s.quoteSub}>Frais de service inclus</Text>
                 </>
               ) : (
                 <Text style={s.hint}>Le tarif se met à jour automatiquement.</Text>
@@ -520,8 +522,8 @@ export default function InsuranceForm() {
               ) : (
                 <>
                   <Text style={s.quoteLabel}>Total à payer</Text>
-                  <Text style={s.quoteValue}>{totalEur?.toFixed(2) ?? '-'} €</Text>
-                  <Text style={s.quoteSub}>≈ {Math.round((totalEur ?? 0) * EUR_TO_XPF).toLocaleString('fr-FR')} XPF TTC</Text>
+                  <Text style={s.quoteValue}>{totalEur != null ? formatXpf(totalEur * EUR_TO_XPF) : '-'}</Text>
+                  <Text style={s.quoteSub}>TTC</Text>
                 </>
               )}
             </View>
@@ -550,7 +552,7 @@ export default function InsuranceForm() {
               {checkingOut ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={s.ctaTxt}>{`Payer${totalEur != null ? ` — ${totalEur.toFixed(2)} €` : ''}`}</Text>
+                <Text style={s.ctaTxt}>{`Payer${totalEur != null ? ` — ${formatXpf(totalEur * EUR_TO_XPF)}` : ''}`}</Text>
               )}
             </LinearGradient>
           </TouchableOpacity>

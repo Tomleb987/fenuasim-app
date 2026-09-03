@@ -5,11 +5,13 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { COLORS, EUR_TO_XPF } from '../../constants/theme'
+import { useCurrency } from '../../lib/currency'
 import { useEsimTopups } from '../../hooks/useEsimTopups'
 import { EsimTopupOption } from '../../types'
 
 export default function EsimTopupScreen() {
   const router = useRouter()
+  const { formatXpf } = useCurrency()
   const { iccid, destination } = useLocalSearchParams<{ iccid: string; destination?: string }>()
   const { loading, options, compatible, error, fetchTopups, createCheckout } = useEsimTopups()
   const [selected, setSelected] = useState<EsimTopupOption | null>(null)
@@ -86,10 +88,7 @@ export default function EsimTopupScreen() {
                     <Text style={s.optionTitle}>{opt.is_unlimited ? 'Données illimitées' : (opt.data_label ?? opt.title ?? '-')}</Text>
                     {!!opt.validity_days && <Text style={s.optionSub}>{opt.validity_days} jours</Text>}
                   </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={s.optionPrice}>{Math.round(opt.price_eur * EUR_TO_XPF).toLocaleString('fr-FR')} XPF</Text>
-                    <Text style={s.optionPriceSub}>{opt.price_eur} €</Text>
-                  </View>
+                  <Text style={s.optionPrice}>{formatXpf(opt.price_eur * EUR_TO_XPF)}</Text>
                   <Ionicons
                     name={isSelected ? 'radio-button-on' : 'radio-button-off'}
                     size={20}
@@ -111,7 +110,7 @@ export default function EsimTopupScreen() {
                 {creating ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={s.ctaTxt}>{selected ? `Recharger — ${Math.round(selected.price_eur * EUR_TO_XPF).toLocaleString('fr-FR')} XPF` : 'Choisissez une recharge'}</Text>
+                  <Text style={s.ctaTxt}>{selected ? `Recharger — ${formatXpf(selected.price_eur * EUR_TO_XPF)}` : 'Choisissez une recharge'}</Text>
                 )}
               </LinearGradient>
             </TouchableOpacity>
@@ -141,7 +140,6 @@ const s = StyleSheet.create({
   optionTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text },
   optionSub: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
   optionPrice: { fontSize: 15, fontWeight: '800', color: COLORS.violet },
-  optionPriceSub: { fontSize: 11, color: COLORS.textMuted, marginTop: 1 },
   ctaBar: { backgroundColor: '#fff', padding: 16, borderTopWidth: 1, borderTopColor: COLORS.border },
   ctaWrap: { borderRadius: 14, overflow: 'hidden' },
   cta: { padding: 16, alignItems: 'center', justifyContent: 'center' },

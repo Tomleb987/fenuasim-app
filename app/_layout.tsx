@@ -7,6 +7,8 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { supabase } from '../lib/supabase'
 import { Session } from '@supabase/supabase-js'
 import { COLORS } from '../constants/theme'
+import { CurrencyProvider, useCurrency } from '../lib/currency'
+import CurrencyPicker from '../components/CurrencyPicker'
 
 const BAR_HEIGHTS = [10, 15, 20, 25]
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window')
@@ -245,11 +247,21 @@ function SplashScreen({ exiting, onExited }: { exiting: boolean; onExited: () =>
 }
 
 export default function RootLayout() {
+  return (
+    <CurrencyProvider>
+      <RootLayoutInner />
+    </CurrencyProvider>
+  )
+}
+
+function RootLayoutInner() {
+  const { setCurrency } = useCurrency()
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [showSplash, setShowSplash] = useState(true)
   const [minTimeDone, setMinTimeDone] = useState(false)
   const [splashExiting, setSplashExiting] = useState(false)
+  const [currencyConfirmed, setCurrencyConfirmed] = useState(false)
   // Une session issue d'un lien de recuperation de mot de passe ne doit jamais
   // etre traitee comme une connexion normale : sinon le garde ci-dessous
   // renverrait l'utilisateur vers l'accueil authentifie au lieu de l'ecran de
@@ -285,7 +297,7 @@ export default function RootLayout() {
   }, [loading, minTimeDone, showSplash, splashExiting])
 
   useEffect(() => {
-    if (loading || showSplash) return
+    if (loading || showSplash || !currencyConfirmed) return
     const inAuth = segments[0] === '(auth)'
     if (isPasswordRecovery) {
       const current: string[] = segments
@@ -294,10 +306,21 @@ export default function RootLayout() {
     }
     if (!session && !inAuth) router.replace('/(auth)/login')
     if (session && inAuth) router.replace('/(tabs)')
-  }, [session, loading, showSplash, segments, isPasswordRecovery])
+  }, [session, loading, showSplash, currencyConfirmed, segments, isPasswordRecovery])
 
   if (showSplash || loading) {
     return <SplashScreen exiting={splashExiting} onExited={() => setShowSplash(false)} />
+  }
+
+  if (!currencyConfirmed) {
+    return (
+      <CurrencyPicker
+        onSelect={(c) => {
+          setCurrency(c)
+          setCurrencyConfirmed(true)
+        }}
+      />
+    )
   }
 
   return (

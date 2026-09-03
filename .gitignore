@@ -36,6 +36,9 @@ yarn-error.*
 # local build artifacts (downloaded .aab/.ipa, not source)
 /builds/
 
+# submission credentials (Apple/Google service keys, never committed)
+/secrets/
+
 # typescript
 *.tsbuildinfo
 

@@ -10,7 +10,7 @@ type IoniconName = React.ComponentProps<typeof Ionicons>['name']
 function TabIcon({ focused, name, activeName }: { focused: boolean; name: IoniconName; activeName: IoniconName }) {
   return (
     <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
-      <Ionicons name={focused ? activeName : name} size={22} color={focused ? COLORS.violet : '#C8C7CC'} />
+      <Ionicons name={focused ? activeName : name} size={25} color={focused ? COLORS.violet : COLORS.textMuted} />
     </View>
   )
 }
@@ -43,7 +43,8 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarStyle: styles.tabBar,
         tabBarActiveTintColor: COLORS.violet,
-        tabBarInactiveTintColor: '#C8C7CC',
+        tabBarInactiveTintColor: COLORS.textMuted,
+        tabBarLabelStyle: styles.tabLabel,
         tabBarButton: (props) => <BouncyTabButton {...props} />,
       }}
     >
@@ -58,7 +59,7 @@ export default function TabsLayout() {
         name="explore"
         options={{
           title: 'eSIM',
-          tabBarLabel: 'Explorer',
+          tabBarLabel: () => null,
           tabBarIcon: ({ focused }) =>
             focused ? (
               <LinearGradient
@@ -67,15 +68,22 @@ export default function TabsLayout() {
                 end={{ x: 1, y: 0 }}
                 style={styles.pill}
               >
-                <Ionicons name="search" size={13} color="#fff" style={{ marginRight: 5 }} />
+                <Ionicons name="search" size={14} color="#fff" style={{ marginRight: 5 }} />
                 <Text style={styles.pillText}>eSIM</Text>
               </LinearGradient>
             ) : (
               <View style={styles.pillInactive}>
-                <Ionicons name="search-outline" size={13} color="#C8C7CC" style={{ marginRight: 5 }} />
+                <Ionicons name="search-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 5 }} />
                 <Text style={styles.pillTextInactive}>eSIM</Text>
               </View>
             ),
+        }}
+      />
+      <Tabs.Screen
+        name="insurance"
+        options={{
+          title: 'Assurance',
+          tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="shield-outline" activeName="shield" />,
         }}
       />
       <Tabs.Screen
@@ -103,15 +111,20 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -4 },
     elevation: 8,
   },
+  tabLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 3,
+  },
   iconWrap: {
-    width: 46,
-    height: 32,
-    borderRadius: 16,
+    width: 48,
+    height: 34,
+    borderRadius: 17,
     justifyContent: 'center',
     alignItems: 'center',
   },
   iconWrapActive: {
-    backgroundColor: 'rgba(210,81,216,0.1)',
+    backgroundColor: 'rgba(210,81,216,0.16)',
   },
   pill: {
     flexDirection: 'row',
@@ -137,7 +150,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   pillTextInactive: {
-    color: '#C8C7CC',
+    color: COLORS.textMuted,
     fontSize: 13,
     fontWeight: '800',
   },

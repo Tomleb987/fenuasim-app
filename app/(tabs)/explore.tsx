@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { COLORS } from '../../constants/theme'
 import { getFR } from '../../lib/regionNames'
+import { useCurrency } from '../../lib/currency'
 
 const TOP = ["France","Canada","Etats-Unis","Australie","Nouvelle-Zelande"]
 
@@ -42,19 +43,42 @@ export default function ExploreScreen() {
 
   async function fetchAll() {
     setLoading(true)
-    const { data } = await supabase
-      .from('airalo_packages')
-      .select('id, name, region_fr, region, slug, data_amount, data_unit, validity, validity_days, final_price_xpf, is_unlimited, type, flag_url, status')
-      .order('final_price_xpf', { ascending: true })
+    // Le projet Supabase plafonne chaque requete a 1000 lignes (verifie : 2058
+    // forfaits actifs reels au total, content-range renvoie toujours 0-999
+    // meme en demandant plus). Sans pagination, les forfaits les plus chers
+    // (au-dela des 1000 moins chers, tri croissant) etaient silencieusement
+    // absents ici -- d'ou un comptage par destination inferieur a celui de la
+    // fiche destination (qui filtre par slug et n'atteint jamais cette limite).
+    const PAGE_SIZE = 1000
+    let data: any[] = []
+    let from = 0
+    while (true) {
+      const { data: page, error } = await supabase
+        .from('airalo_packages')
+        .select('id, name, region_fr, region, slug, data_amount, data_unit, validity, validity_days, final_price_xpf, is_unlimited, type, flag_url, status')
+        .eq('status', 'active')
+        .order('final_price_xpf', { ascending: true })
+        .range(from, from + PAGE_SIZE - 1)
+      if (error || !page) break
+      data = data.concat(page)
+      if (page.length < PAGE_SIZE) break
+      from += PAGE_SIZE
+    }
 
-    if (data) {
+    if (data.length > 0) {
       const valid = data.filter(p => p.final_price_xpf && p.final_price_xpf > 0)
+      // Regroupe par slug (l'identifiant reellement utilise pour naviguer et
+      // filtrer la fiche destination : app/esim/[country].tsx fait .eq('slug', s))
+      // et non par nom de region traduit -- un regroupement par texte peut se
+      // fragmenter si region_fr/region varie (casse, accents) pour un meme
+      // slug, ce qui desynchronise le compteur affiche ici du vrai nombre de
+      // forfaits trouve sur la fiche destination.
       const map: Record<string, any> = {}
       valid.forEach(p => {
-        const nameFR = getFR(p.region_fr, p.region)
-        if (!map[nameFR]) {
-          map[nameFR] = {
-            nameFR,
+        const key = p.slug
+        if (!map[key]) {
+          map[key] = {
+            nameFR: getFR(p.region_fr, p.region),
             slug: p.slug,
             type: p.type,
             flag_url: p.flag_url,
@@ -63,10 +87,10 @@ export default function ExploreScreen() {
             count: 1,
           }
         } else {
-          if (p.final_price_xpf < map[nameFR].minPrice) map[nameFR].minPrice = p.final_price_xpf
+          if (p.final_price_xpf < map[key].minPrice) map[key].minPrice = p.final_price_xpf
           const d = getDays(p.validity)
-          if (d > map[nameFR].maxDays) map[nameFR].maxDays = d
-          map[nameFR].count++
+          if (d > map[key].maxDays) map[key].maxDays = d
+          map[key].count++
         }
       })
       const list = Object.values(map).sort((a,b) => a.nameFR.localeCompare(b.nameFR, 'fr'))
@@ -152,6 +176,7 @@ export default function ExploreScreen() {
 }
 
 function DestCard({ d, router, top = false }: { d: any, router: any, top?: boolean }) {
+  const { formatXpf } = useCurrency()
   return (
     <TouchableOpacity
       style={[s.card, top && s.cardTop]}
@@ -171,7 +196,7 @@ function DestCard({ d, router, top = false }: { d: any, router: any, top?: boole
         </View>
         <View style={{alignItems:'flex-end'}}>
           <Text style={s.priceLabel}>A partir de</Text>
-          <Text style={s.priceVal}>{Math.round(d.minPrice).toLocaleString()} XPF</Text>
+          <Text style={s.priceVal}>{formatXpf(d.minPrice)}</Text>
         </View>
       </View>
       <View style={s.cardFooter}>

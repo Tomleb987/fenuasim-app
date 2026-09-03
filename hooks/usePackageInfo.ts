@@ -98,11 +98,38 @@ export function getPlanType(p: { includes_voice?: boolean | null; includes_sms?:
   return 'internet'
 }
 
-export function getPlanTypeLabel(t: PlanCoverageType): string {
+// Le volume d'appels/SMS n'a pas sa propre colonne dans airalo_packages
+// (seulement includes_voice/includes_sms, des booleens) -- mais il est deja
+// present, de facon fiable, dans le champ `name` du forfait, verifie reel sur
+// les 47 forfaits concernes : format constant "{data} Go - {sms} SMS -
+// {mins} Mins - {jours} jours". Jamais invente : si le format ne correspond
+// pas, on affiche juste "Inclus" comme avant plutot qu'un chiffre incorrect.
+export interface VoiceSmsVolume {
+  minutes: number | null
+  sms: number | null
+}
+
+export function parseVoiceSmsVolume(name: string | null | undefined): VoiceSmsVolume {
+  if (!name) return { minutes: null, sms: null }
+  const smsMatch = name.match(/(\d+)\s*SMS/i)
+  const minMatch = name.match(/(\d+)\s*Mins?\b/i)
+  return {
+    sms: smsMatch ? parseInt(smsMatch[1], 10) : null,
+    minutes: minMatch ? parseInt(minMatch[1], 10) : null,
+  }
+}
+
+export function getPlanTypeLabel(t: PlanCoverageType, volume?: VoiceSmsVolume): string {
+  const mins = volume?.minutes
+  const sms = volume?.sms
   switch (t) {
-    case 'internet_calls_sms': return 'Internet + appels + SMS'
-    case 'internet_calls': return 'Internet + appels'
-    case 'internet_sms': return 'Internet + SMS'
+    case 'internet_calls_sms':
+      if (mins != null && sms != null) return `Internet + ${mins} min + ${sms} SMS`
+      return 'Internet + appels + SMS'
+    case 'internet_calls':
+      return mins != null ? `Internet + ${mins} min d'appels` : 'Internet + appels'
+    case 'internet_sms':
+      return sms != null ? `Internet + ${sms} SMS` : 'Internet + SMS'
     default: return 'Internet uniquement'
   }
 }
