@@ -1,8 +1,40 @@
+import { useRef } from 'react'
 import { Tabs } from 'expo-router'
-import { Text, StyleSheet } from 'react-native'
+import { View, Text, StyleSheet, Pressable, Animated, GestureResponderEvent } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/theme'
+
+type IoniconName = React.ComponentProps<typeof Ionicons>['name']
+
+function TabIcon({ focused, name, activeName }: { focused: boolean; name: IoniconName; activeName: IoniconName }) {
+  return (
+    <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
+      <Ionicons name={focused ? activeName : name} size={22} color={focused ? COLORS.violet : '#C8C7CC'} />
+    </View>
+  )
+}
+
+function BouncyTabButton(props: any) {
+  const scale = useRef(new Animated.Value(1)).current
+
+  const onPressIn = (e: GestureResponderEvent) => {
+    Animated.spring(scale, { toValue: 0.86, useNativeDriver: true, speed: 50, bounciness: 6 }).start()
+    props.onPressIn?.(e)
+  }
+  const onPressOut = (e: GestureResponderEvent) => {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 9 }).start()
+    props.onPressOut?.(e)
+  }
+
+  return (
+    <Pressable {...props} onPressIn={onPressIn} onPressOut={onPressOut}>
+      <Animated.View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', transform: [{ scale }] }}>
+        {props.children}
+      </Animated.View>
+    </Pressable>
+  )
+}
 
 export default function TabsLayout() {
   return (
@@ -12,15 +44,14 @@ export default function TabsLayout() {
         tabBarStyle: styles.tabBar,
         tabBarActiveTintColor: COLORS.violet,
         tabBarInactiveTintColor: '#C8C7CC',
+        tabBarButton: (props) => <BouncyTabButton {...props} />,
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: 'Accueil',
-          tabBarIcon: ({ focused, color }) => (
-            <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
-          ),
+          tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="home-outline" activeName="home" />,
         }}
       />
       <Tabs.Screen
@@ -28,26 +59,30 @@ export default function TabsLayout() {
         options={{
           title: 'eSIM',
           tabBarLabel: 'Explorer',
-          tabBarIcon: () => (
-            <LinearGradient
-              colors={['#D251D8', '#FD7F3C']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.pill}
-            >
-              <Ionicons name="search" size={13} color="#fff" style={{ marginRight: 5 }} />
-              <Text style={styles.pillText}>eSIM</Text>
-            </LinearGradient>
-          ),
+          tabBarIcon: ({ focused }) =>
+            focused ? (
+              <LinearGradient
+                colors={['#D251D8', '#FD7F3C']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.pill}
+              >
+                <Ionicons name="search" size={13} color="#fff" style={{ marginRight: 5 }} />
+                <Text style={styles.pillText}>eSIM</Text>
+              </LinearGradient>
+            ) : (
+              <View style={styles.pillInactive}>
+                <Ionicons name="search-outline" size={13} color="#C8C7CC" style={{ marginRight: 5 }} />
+                <Text style={styles.pillTextInactive}>eSIM</Text>
+              </View>
+            ),
         }}
       />
       <Tabs.Screen
         name="account"
         options={{
           title: 'Compte',
-          tabBarIcon: ({ focused, color }) => (
-            <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
-          ),
+          tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="person-outline" activeName="person" />,
         }}
       />
     </Tabs>
@@ -62,6 +97,21 @@ const styles = StyleSheet.create({
     height: 80,
     paddingBottom: 16,
     paddingTop: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 8,
+  },
+  iconWrap: {
+    width: 46,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconWrapActive: {
+    backgroundColor: 'rgba(210,81,216,0.1)',
   },
   pill: {
     flexDirection: 'row',
@@ -71,8 +121,23 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     marginBottom: 4,
   },
+  pillInactive: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 24,
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    marginBottom: 4,
+    borderWidth: 1.5,
+    borderColor: '#EDEDED',
+  },
   pillText: {
     color: '#fff',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  pillTextInactive: {
+    color: '#C8C7CC',
     fontSize: 13,
     fontWeight: '800',
   },

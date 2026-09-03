@@ -23,7 +23,7 @@ export default function PaymentScreen() {
     setLoading(true)
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { Alert.alert('Erreur', 'Vous devez etre connecte'); return }
+      if (!session) { Alert.alert('Erreur', 'Vous devez être connecté'); return }
 
       const { data, error } = await supabase.functions.invoke('create-checkout-mobile', {
         body: {
@@ -34,27 +34,30 @@ export default function PaymentScreen() {
       })
 
       if (error || !data?.url) {
-        Alert.alert('Erreur', error?.message ?? 'Impossible de creer le paiement')
+        console.error('create-checkout-mobile:', error)
+        Alert.alert('Erreur', 'Impossible de créer le paiement, veuillez réessayer.')
         return
       }
 
       await Linking.openURL(data.url)
 
     } catch (e: any) {
-      Alert.alert('Erreur', e.message)
+      console.error('handlePayment:', e)
+      Alert.alert('Erreur', 'Une erreur est survenue, veuillez réessayer.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <SafeAreaView style={s.safe}>
-      <View style={s.header}>
+    <SafeAreaView style={s.safe} edges={['top']}>
+      <LinearGradient colors={['#D251D8', '#FD7F3C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.hero}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <Ionicons name="arrow-back" size={20} color={COLORS.text} />
+          <Ionicons name="arrow-back" size={20} color="#fff" />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Paiement</Text>
-      </View>
+        <Text style={s.heroTitle}>Paiement</Text>
+        <Text style={s.heroSub}>{params.country}</Text>
+      </LinearGradient>
 
       <View style={s.content}>
         <View style={s.summaryCard}>
@@ -107,9 +110,10 @@ export default function PaymentScreen() {
 
 const s = StyleSheet.create({
   safe:{flex:1,backgroundColor:COLORS.bg},
-  header:{flexDirection:'row',alignItems:'center',padding:16,backgroundColor:'#fff',borderBottomWidth:0.5,borderBottomColor:COLORS.border},
-  backBtn:{marginRight:12},
-  headerTitle:{fontSize:17,fontWeight:'700',color:COLORS.text},
+  hero:{padding:20,paddingBottom:24},
+  backBtn:{backgroundColor:'rgba(255,255,255,0.2)',borderRadius:20,width:36,height:36,justifyContent:'center',alignItems:'center',marginBottom:12},
+  heroTitle:{color:'#fff',fontSize:22,fontWeight:'800'},
+  heroSub:{color:'rgba(255,255,255,0.85)',fontSize:13,marginTop:4},
   content:{flex:1,padding:16},
   summaryCard:{backgroundColor:'#fff',borderRadius:16,padding:16,marginBottom:12,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
   summaryTitle:{fontSize:15,fontWeight:'700',color:COLORS.text,marginBottom:12},

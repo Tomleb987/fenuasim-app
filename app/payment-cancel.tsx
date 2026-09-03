@@ -22,8 +22,10 @@ export default function PaymentCancel() {
         <Text style={s.title}>Paiement annulé</Text>
         <Text style={s.sub}>Aucun montant n'a été débité. Vous pouvez réessayer à tout moment.</Text>
 
-        <TouchableOpacity style={s.cta} onPress={() => router.replace('/(tabs)')}>
-          <Text style={s.ctaTxt}>Retour à l'accueil</Text>
+        <TouchableOpacity style={s.ctaWrap} onPress={() => router.replace('/(tabs)')}>
+          <View style={s.cta}>
+            <Text style={s.ctaTxt}>Retour à l'accueil</Text>
+          </View>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -36,6 +38,7 @@ const s = StyleSheet.create({
   circle: { width: 72, height: 72, borderRadius: 36, justifyContent: 'center', alignItems: 'center', marginBottom: 16, backgroundColor: COLORS.border },
   title: { fontSize: 22, fontWeight: '800', color: COLORS.text, textAlign: 'center' },
   sub: { fontSize: 14, color: '#888', marginTop: 8, textAlign: 'center', lineHeight: 20 },
-  cta: { marginTop: 28, borderRadius: 14, paddingVertical: 16, paddingHorizontal: 32, backgroundColor: COLORS.violet },
-  ctaTxt: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  ctaWrap: { marginTop: 28, borderRadius: 14, overflow: 'hidden', backgroundColor: '#fff', borderWidth: 1.5, borderColor: COLORS.violet },
+  cta: { paddingVertical: 16, paddingHorizontal: 32 },
+  ctaTxt: { color: COLORS.violet, fontSize: 16, fontWeight: '800' },
 })

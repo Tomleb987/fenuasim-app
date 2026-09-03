@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
-import { COLORS } from '../../constants/theme'
+import { COLORS, EUR_TO_XPF } from '../../constants/theme'
 import { useEsimTopups } from '../../hooks/useEsimTopups'
 import { EsimTopupOption } from '../../types'
 
@@ -26,7 +26,8 @@ export default function EsimTopupScreen() {
       const { url } = await createCheckout(iccid, selected.package_id)
       await Linking.openURL(url)
     } catch (e: any) {
-      Alert.alert('Erreur', e.message)
+      console.error('handleRecharge:', e)
+      Alert.alert('Erreur', 'Impossible de créer le paiement, veuillez réessayer.')
     } finally {
       setCreating(false)
     }
@@ -60,8 +61,8 @@ export default function EsimTopupScreen() {
       ) : compatible === false || options.length === 0 ? (
         <View style={s.center}>
           <Ionicons name="server-outline" size={48} color={COLORS.textMuted} />
-          <Text style={s.centerTitle}>Aucune recharge disponible</Text>
-          <Text style={s.centerTxt}>Cette eSIM ne peut pas être rechargée pour le moment.</Text>
+          <Text style={s.centerTitle}>Recharge non disponible pour ce forfait</Text>
+          <Text style={s.centerTxt}>Ce forfait ne propose pas de recharge. Vous pouvez acheter une nouvelle eSIM à la place.</Text>
           <TouchableOpacity style={s.retryBtn} onPress={() => router.push('/(tabs)/explore')}>
             <Text style={s.retryTxt}>Acheter une nouvelle eSIM</Text>
           </TouchableOpacity>
@@ -85,7 +86,10 @@ export default function EsimTopupScreen() {
                     <Text style={s.optionTitle}>{opt.is_unlimited ? 'Données illimitées' : (opt.data_label ?? opt.title ?? '-')}</Text>
                     {!!opt.validity_days && <Text style={s.optionSub}>{opt.validity_days} jours</Text>}
                   </View>
-                  <Text style={s.optionPrice}>{opt.price_eur} €</Text>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={s.optionPrice}>{Math.round(opt.price_eur * EUR_TO_XPF).toLocaleString('fr-FR')} XPF</Text>
+                    <Text style={s.optionPriceSub}>{opt.price_eur} €</Text>
+                  </View>
                   <Ionicons
                     name={isSelected ? 'radio-button-on' : 'radio-button-off'}
                     size={20}
@@ -107,7 +111,7 @@ export default function EsimTopupScreen() {
                 {creating ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={s.ctaTxt}>{selected ? `Recharger — ${selected.price_eur} €` : 'Choisissez une recharge'}</Text>
+                  <Text style={s.ctaTxt}>{selected ? `Recharger — ${Math.round(selected.price_eur * EUR_TO_XPF).toLocaleString('fr-FR')} XPF` : 'Choisissez une recharge'}</Text>
                 )}
               </LinearGradient>
             </TouchableOpacity>
@@ -121,7 +125,7 @@ export default function EsimTopupScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
   hero: { padding: 20, paddingBottom: 24 },
-  backBtn: { width: 32, height: 32, justifyContent: 'center', marginBottom: 8 },
+  backBtn: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, width: 36, height: 36, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
   heroTitle: { color: '#fff', fontSize: 20, fontWeight: '800' },
   heroSub: { color: 'rgba(255,255,255,0.85)', fontSize: 13, marginTop: 4 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, gap: 10 },
@@ -136,7 +140,8 @@ const s = StyleSheet.create({
   optionIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(210,81,216,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
   optionTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text },
   optionSub: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
-  optionPrice: { fontSize: 16, fontWeight: '800', color: COLORS.violet },
+  optionPrice: { fontSize: 15, fontWeight: '800', color: COLORS.violet },
+  optionPriceSub: { fontSize: 11, color: COLORS.textMuted, marginTop: 1 },
   ctaBar: { backgroundColor: '#fff', padding: 16, borderTopWidth: 1, borderTopColor: COLORS.border },
   ctaWrap: { borderRadius: 14, overflow: 'hidden' },
   cta: { padding: 16, alignItems: 'center', justifyContent: 'center' },

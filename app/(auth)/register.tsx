@@ -12,15 +12,17 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function handleRegister() {
-    if (!fullName || !email || !password) { Alert.alert('Erreur', 'Remplissez tous les champs'); return }
-    if (password.length < 6) { Alert.alert('Erreur', 'Mot de passe trop court (6 caracteres min)'); return }
+    if (!fullName || !email || !password) { setError('Remplissez tous les champs.'); return }
+    if (password.length < 6) { setError('Mot de passe trop court (6 caractères minimum).'); return }
+    setError(null)
     setLoading(true)
-    const { error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } })
+    const { error: authError } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } })
     setLoading(false)
-    if (error) Alert.alert('Erreur', error.message)
-    else { Alert.alert('Compte cree !', 'Vous pouvez maintenant vous connecter.'); router.replace('/(auth)/login') }
+    if (authError) setError(authError.message.includes('already registered') ? 'Un compte existe déjà avec cet email.' : 'Une erreur est survenue, veuillez réessayer.')
+    else { Alert.alert('Compte créé !', 'Vous pouvez maintenant vous connecter.'); router.replace('/(auth)/login') }
   }
 
   return (
@@ -35,16 +37,17 @@ export default function RegisterScreen() {
             <Text style={s.formTitle}>Inscription</Text>
             <Text style={s.label}>Nom complet</Text>
             <View style={s.inputWrap}>
-              <TextInput style={s.input} placeholder="Thomas Dupont" placeholderTextColor="#aaa" value={fullName} onChangeText={setFullName} />
+              <TextInput style={s.input} placeholder="Thomas Dupont" placeholderTextColor="#aaa" value={fullName} onChangeText={(v) => { setFullName(v); setError(null) }} />
             </View>
             <Text style={s.label}>Email</Text>
             <View style={s.inputWrap}>
-              <TextInput style={s.input} placeholder="votre@email.com" placeholderTextColor="#aaa" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+              <TextInput style={s.input} placeholder="votre@email.com" placeholderTextColor="#aaa" value={email} onChangeText={(v) => { setEmail(v); setError(null) }} keyboardType="email-address" autoCapitalize="none" />
             </View>
             <Text style={s.label}>Mot de passe</Text>
             <View style={s.inputWrap}>
-              <TextInput style={s.input} placeholder="6 caracteres minimum" placeholderTextColor="#aaa" value={password} onChangeText={setPassword} secureTextEntry />
+              <TextInput style={s.input} placeholder="6 caracteres minimum" placeholderTextColor="#aaa" value={password} onChangeText={(v) => { setPassword(v); setError(null) }} secureTextEntry />
             </View>
+            {!!error && <Text style={s.errorTxt}>{error}</Text>}
             <TouchableOpacity style={s.ctaWrap} onPress={handleRegister} disabled={loading}>
               <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.cta}>
                 <Text style={s.ctaTxt}>{loading ? 'Creation...' : 'Creer mon compte'}</Text>
@@ -68,9 +71,10 @@ const s = StyleSheet.create({
   heroSub:{color:'rgba(255,255,255,0.85)',fontSize:14,marginTop:8},
   form:{padding:24,backgroundColor:'#fff'},
   formTitle:{fontSize:22,fontWeight:'800',color:COLORS.text,marginBottom:24},
-  label:{fontSize:12,fontWeight:'700',color:'#999',textTransform:'uppercase',letterSpacing:0.3,marginBottom:8},
+  label:{fontSize:12,fontWeight:'700',color:COLORS.textMuted,textTransform:'uppercase',letterSpacing:0.3,marginBottom:8},
   inputWrap:{backgroundColor:COLORS.bg,borderRadius:12,paddingHorizontal:14,paddingVertical:13,borderWidth:1,borderColor:COLORS.border,marginBottom:16},
   input:{fontSize:15,color:COLORS.text},
+  errorTxt:{color:'#B00020',fontSize:13,marginBottom:8},
   ctaWrap:{borderRadius:14,overflow:'hidden',marginTop:8},
   cta:{padding:16,alignItems:'center'},
   ctaTxt:{color:'#fff',fontSize:16,fontWeight:'800'},

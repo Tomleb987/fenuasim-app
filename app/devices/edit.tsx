@@ -20,6 +20,7 @@ export default function EditDevice() {
   const [model, setModel] = useState('')
   const [travelerId, setTravelerId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isEdit || loading) return
@@ -33,7 +34,8 @@ export default function EditDevice() {
   }, [isEdit, loading, id, devices])
 
   async function handleSave() {
-    if (!name.trim()) { Alert.alert('Erreur', 'Le nom de l\'appareil est obligatoire'); return }
+    if (!name.trim()) { setError("Le nom de l'appareil est obligatoire."); return }
+    setError(null)
     setSaving(true)
     try {
       const input = { name: name.trim(), brand: brand.trim(), model: model.trim(), traveler_id: travelerId }
@@ -41,7 +43,8 @@ export default function EditDevice() {
       else await addDevice(input)
       router.back()
     } catch (e: any) {
-      Alert.alert('Erreur', e.message ?? 'Impossible d\'enregistrer')
+      console.error('handleSave device:', e)
+      setError("Impossible d'enregistrer, veuillez réessayer.")
     } finally {
       setSaving(false)
     }
@@ -57,7 +60,8 @@ export default function EditDevice() {
             await deleteDevice(id)
             router.back()
           } catch (e: any) {
-            Alert.alert('Erreur', e.message ?? 'Impossible de supprimer')
+            console.error('handleDelete device:', e)
+            Alert.alert('Erreur', 'Impossible de supprimer, veuillez réessayer.')
           }
         }
       },
@@ -85,8 +89,9 @@ export default function EditDevice() {
         <ScrollView style={s.form}>
           <Text style={s.label}>Nom de l'appareil</Text>
           <View style={s.inputWrap}>
-            <TextInput style={s.input} placeholder="iPhone Thomas" placeholderTextColor="#aaa" value={name} onChangeText={setName} />
+            <TextInput style={s.input} placeholder="iPhone Thomas" placeholderTextColor="#aaa" value={name} onChangeText={(v) => { setName(v); setError(null) }} />
           </View>
+          {!!error && <Text style={s.errorTxt}>{error}</Text>}
           <Text style={s.label}>Marque (facultatif)</Text>
           <View style={s.inputWrap}>
             <TextInput style={s.input} placeholder="Apple" placeholderTextColor="#aaa" value={brand} onChangeText={setBrand} />
@@ -121,7 +126,7 @@ export default function EditDevice() {
 
           <TouchableOpacity style={s.ctaWrap} onPress={handleSave} disabled={saving}>
             <View style={s.cta}>
-              {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaTxt}>{isEdit ? 'Enregistrer' : 'Ajouter'}</Text>}
+              {saving ? <ActivityIndicator color={COLORS.violet} /> : <Text style={s.ctaTxt}>{isEdit ? 'Enregistrer' : 'Ajouter'}</Text>}
             </View>
           </TouchableOpacity>
 
@@ -144,17 +149,18 @@ const s = StyleSheet.create({
   backBtn: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, width: 36, height: 36, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
   heroTitle: { color: '#fff', fontSize: 22, fontWeight: '800' },
   form: { padding: 20 },
-  label: { fontSize: 12, fontWeight: '700', color: '#999', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 8 },
+  label: { fontSize: 12, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 8 },
   inputWrap: { backgroundColor: COLORS.bg, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, borderWidth: 1, borderColor: COLORS.border, marginBottom: 16 },
   input: { fontSize: 15, color: COLORS.text },
+  errorTxt: { color: '#B00020', fontSize: 13, marginTop: -8, marginBottom: 16 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: '#fff' },
   chipSel: { borderColor: COLORS.violet, backgroundColor: 'rgba(210,81,216,0.08)' },
   chipTxt: { fontSize: 13, fontWeight: '600', color: '#888' },
   chipTxtSel: { color: COLORS.violet },
-  ctaWrap: { borderRadius: 14, overflow: 'hidden', backgroundColor: COLORS.violet, marginTop: 8 },
+  ctaWrap: { borderRadius: 14, overflow: 'hidden', marginTop: 8, backgroundColor: '#fff', borderWidth: 1.5, borderColor: COLORS.violet },
   cta: { padding: 16, alignItems: 'center' },
-  ctaTxt: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  ctaTxt: { color: COLORS.violet, fontSize: 16, fontWeight: '800' },
   deleteBtn: { marginTop: 16, alignItems: 'center', padding: 10 },
   deleteTxt: { color: '#e74c3c', fontSize: 14, fontWeight: '600' },
 })

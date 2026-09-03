@@ -256,7 +256,7 @@ export default function CountryDetail() {
                     </View>
                     <Text style={s.filterLabel}>Durée</Text>
                     <View style={s.filterRow}>
-                      {([['all', 'Toutes'], ['short', '≤ 7 j'], ['medium', '15 j'], ['long', '30 j+']] as [DurationFilter, string][]).map(([key, label]) => (
+                      {([['all', 'Toutes'], ['short', '≤ 7 j'], ['medium', '8-29 j'], ['long', '30 j+']] as [DurationFilter, string][]).map(([key, label]) => (
                         <TouchableOpacity key={key} style={[s.filterChip, durationFilter === key && s.filterChipSel]} onPress={() => setDurationFilter(key)}>
                           <Text style={[s.filterChipTxt, durationFilter === key && s.filterChipTxtSel]}>{label}</Text>
                         </TouchableOpacity>
@@ -415,7 +415,7 @@ const s = StyleSheet.create({
   forfaitsPage: { flex: 1, paddingHorizontal: 16, paddingTop: 12 },
 
   filtersWrap: { marginBottom: 12 },
-  filterLabel: { fontSize: 11, fontWeight: '700', color: '#999', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 6, marginTop: 6 },
+  filterLabel: { fontSize: 11, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 6, marginTop: 6 },
   filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
   filterChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: '#fff' },
   filterChipSel: { borderColor: COLORS.violet, backgroundColor: 'rgba(210,81,216,0.08)' },
@@ -444,7 +444,7 @@ const s = StyleSheet.create({
 
   infoPage: { flex: 1, padding: 16 },
   infoCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 },
-  infoSection: { fontSize: 11, fontWeight: '700', color: '#999', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
+  infoSection: { fontSize: 11, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
   infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: '#f8f8f8' },
   infoTxt: { fontSize: 13, color: '#333', flex: 1, lineHeight: 18 },
   stepNum: { width: 20, height: 20, borderRadius: 10, backgroundColor: COLORS.violet, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
@@ -452,7 +452,7 @@ const s = StyleSheet.create({
 
   ctaBar: { backgroundColor: '#fff', padding: 12, borderTopWidth: 1, borderTopColor: '#F0F0F0' },
   selectionSummary: { marginBottom: 8, paddingHorizontal: 2 },
-  selectionSummaryTitle: { fontSize: 10, fontWeight: '700', color: '#999', textTransform: 'uppercase', letterSpacing: 0.4 },
+  selectionSummaryTitle: { fontSize: 10, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4 },
   selectionSummaryTxt: { fontSize: 13, fontWeight: '700', color: COLORS.text, marginTop: 2 },
   ctaWrap: { borderRadius: 14, overflow: 'hidden' },
   ctaBtn: { padding: 15, alignItems: 'center' },

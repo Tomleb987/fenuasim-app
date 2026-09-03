@@ -156,7 +156,7 @@ const s = StyleSheet.create({
   paragraph: { fontSize: 14, color: COLORS.textMuted, lineHeight: 21, marginBottom: 14 },
   paragraphBold: { fontSize: 14, color: '#B00020', fontWeight: '700', lineHeight: 21, marginBottom: 24 },
   warningTitle: { fontSize: 15, color: COLORS.text, fontWeight: '600', lineHeight: 22, marginBottom: 24 },
-  label: { fontSize: 12, fontWeight: '700', color: '#999', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 8 },
+  label: { fontSize: 12, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 8 },
   input: { backgroundColor: COLORS.bg, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, borderWidth: 1.5, borderColor: COLORS.border, fontSize: 16, fontWeight: '700', color: COLORS.text, marginBottom: 16, letterSpacing: 1 },
   errorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: '#FDECEA', borderRadius: 10, padding: 12, marginBottom: 16 },
   errorTxt: { flex: 1, fontSize: 13, color: '#B00020', lineHeight: 18 },

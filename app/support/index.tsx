@@ -81,6 +81,17 @@ export default function SupportScreen() {
       </LinearGradient>
 
       <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
+        <TouchableOpacity style={s.card} onPress={() => router.push('/support/chat')}>
+          <View style={[s.icon, { backgroundColor: 'rgba(210,81,216,0.1)' }]}>
+            <Ionicons name="sparkles" size={22} color={COLORS.violet} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.cardTitle}>Assistant IA</Text>
+            <Text style={s.cardSub}>Réponses instantanées</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#ccc" />
+        </TouchableOpacity>
+
         <TouchableOpacity style={s.card} onPress={() => openWhatsapp(whatsappMessage)}>
           <View style={[s.icon, { backgroundColor: '#E7F9F0' }]}>
             <Ionicons name="logo-whatsapp" size={22} color="#25D366" />

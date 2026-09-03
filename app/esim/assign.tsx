@@ -62,7 +62,8 @@ export default function AssignEsim() {
       setNewTravelerName('')
       setShowAddTraveler(false)
     } catch (e: any) {
-      Alert.alert('Erreur', e.message ?? 'Impossible d\'ajouter ce voyageur')
+      console.error('handleAddTraveler:', e)
+      Alert.alert('Erreur', "Impossible d'ajouter ce voyageur, veuillez réessayer.")
     } finally {
       setAddingTraveler(false)
     }
@@ -77,7 +78,8 @@ export default function AssignEsim() {
       setNewDeviceName('')
       setShowAddDevice(false)
     } catch (e: any) {
-      Alert.alert('Erreur', e.message ?? 'Impossible d\'ajouter cet appareil')
+      console.error('handleAddDevice:', e)
+      Alert.alert('Erreur', "Impossible d'ajouter cet appareil, veuillez réessayer.")
     } finally {
       setAddingDevice(false)
     }
@@ -96,7 +98,8 @@ export default function AssignEsim() {
       })
       setStep(4)
     } catch (e: any) {
-      Alert.alert('Erreur', e.message ?? 'Impossible d\'attribuer cette eSIM')
+      console.error('handleConfirm assign:', e)
+      Alert.alert('Erreur', "Impossible d'attribuer cette eSIM, veuillez réessayer.")
     } finally {
       setSaving(false)
     }
@@ -114,7 +117,16 @@ export default function AssignEsim() {
           <Ionicons name="arrow-back" size={20} color="#fff" />
         </TouchableOpacity>
         <Text style={s.heroTitle}>Attribuer l'eSIM</Text>
-        {step < 4 && <Text style={s.heroSub}>Étape {step}/3</Text>}
+        {step < 4 && (
+          <>
+            <View style={s.stepDots}>
+              {[1, 2, 3].map((i) => (
+                <View key={i} style={[s.stepDot, i === step && s.stepDotActive, i < step && s.stepDotDone]} />
+              ))}
+            </View>
+            <Text style={s.heroSub}>Étape {step}/3</Text>
+          </>
+        )}
       </LinearGradient>
 
       <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
@@ -252,20 +264,20 @@ export default function AssignEsim() {
       {step < 4 && (
         <View style={s.ctaBar}>
           {step === 1 && (
-            <TouchableOpacity style={[s.ctaWrap, !travelerId && s.ctaDisabled]} disabled={!travelerId} onPress={() => setStep(2)}>
-              <View style={s.cta}><Text style={s.ctaTxt}>Continuer</Text></View>
+            <TouchableOpacity style={[s.ctaWrapNeutral, !travelerId && s.ctaDisabled]} disabled={!travelerId} onPress={() => setStep(2)}>
+              <View style={s.cta}><Text style={s.ctaTxtNeutral}>Continuer</Text></View>
             </TouchableOpacity>
           )}
           {step === 2 && (
-            <TouchableOpacity style={s.ctaWrap} onPress={goToStep3}>
-              <View style={s.cta}><Text style={s.ctaTxt}>Continuer</Text></View>
+            <TouchableOpacity style={s.ctaWrapNeutral} onPress={goToStep3}>
+              <View style={s.cta}><Text style={s.ctaTxtNeutral}>Continuer</Text></View>
             </TouchableOpacity>
           )}
           {step === 3 && (
             <TouchableOpacity style={s.ctaWrap} onPress={handleConfirm} disabled={saving}>
-              <View style={s.cta}>
+              <LinearGradient colors={['#D251D8', '#FD7F3C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.cta}>
                 {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaTxt}>Confirmer</Text>}
-              </View>
+              </LinearGradient>
             </TouchableOpacity>
           )}
         </View>
@@ -273,8 +285,8 @@ export default function AssignEsim() {
 
       {step === 4 && (
         <View style={s.ctaBar}>
-          <TouchableOpacity style={s.ctaWrap} onPress={() => router.replace('/(tabs)')}>
-            <View style={s.cta}><Text style={s.ctaTxt}>Retour a l'accueil</Text></View>
+          <TouchableOpacity style={s.ctaWrapNeutral} onPress={() => router.replace('/(tabs)')}>
+            <View style={s.cta}><Text style={s.ctaTxtNeutral}>Retour a l'accueil</Text></View>
           </TouchableOpacity>
         </View>
       )}
@@ -287,7 +299,11 @@ const s = StyleSheet.create({
   hero: { padding: 20, paddingBottom: 24 },
   backBtn: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, width: 36, height: 36, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
   heroTitle: { color: '#fff', fontSize: 22, fontWeight: '800' },
-  heroSub: { color: 'rgba(255,255,255,0.85)', fontSize: 13, marginTop: 4 },
+  heroSub: { color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: 8, fontWeight: '600' },
+  stepDots: { flexDirection: 'row', gap: 6, marginTop: 14 },
+  stepDot: { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.3)' },
+  stepDotActive: { backgroundColor: '#fff' },
+  stepDotDone: { backgroundColor: 'rgba(255,255,255,0.8)' },
   scroll: { flex: 1, padding: 20 },
   question: { fontSize: 19, fontWeight: '800', color: COLORS.text, marginTop: 8 },
   contextTxt: { fontSize: 13, color: COLORS.textMuted, marginTop: 4 },
@@ -316,7 +332,9 @@ const s = StyleSheet.create({
   successLabel: { fontSize: 18, fontWeight: '800', color: COLORS.violet, marginTop: 6 },
   successDevice: { fontSize: 13, color: COLORS.textMuted, marginTop: 4 },
   ctaBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', padding: 16, borderTopWidth: 1, borderTopColor: COLORS.border },
-  ctaWrap: { borderRadius: 14, overflow: 'hidden', backgroundColor: COLORS.violet },
+  ctaWrap: { borderRadius: 14, overflow: 'hidden' },
+  ctaWrapNeutral: { borderRadius: 14, overflow: 'hidden', backgroundColor: '#fff', borderWidth: 1.5, borderColor: COLORS.violet },
+  ctaTxtNeutral: { color: COLORS.violet, fontSize: 16, fontWeight: '800' },
   ctaDisabled: { opacity: 0.4 },
   cta: { padding: 16, alignItems: 'center' },
   ctaTxt: { color: '#fff', fontSize: 16, fontWeight: '800' },

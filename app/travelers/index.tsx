@@ -67,7 +67,7 @@ export default function TravelersScreen() {
       <View style={s.ctaBar}>
         <TouchableOpacity style={s.ctaWrap} onPress={() => router.push('/travelers/edit')}>
           <View style={s.cta}>
-            <Ionicons name="add" size={20} color="#fff" />
+            <Ionicons name="add" size={20} color={COLORS.violet} />
             <Text style={s.ctaTxt}>Ajouter un voyageur</Text>
           </View>
         </TouchableOpacity>
@@ -93,7 +93,7 @@ const s = StyleSheet.create({
   cardName: { fontSize: 14, fontWeight: '700', color: COLORS.text },
   cardSub: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
   ctaBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', padding: 16, borderTopWidth: 1, borderTopColor: COLORS.border },
-  ctaWrap: { borderRadius: 14, overflow: 'hidden', backgroundColor: COLORS.violet },
+  ctaWrap: { borderRadius: 14, overflow: 'hidden', backgroundColor: '#fff', borderWidth: 1.5, borderColor: COLORS.violet },
   cta: { padding: 15, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
-  ctaTxt: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  ctaTxt: { color: COLORS.violet, fontSize: 15, fontWeight: '800' },
 })

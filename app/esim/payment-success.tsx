@@ -29,6 +29,7 @@ export default function PaymentSuccess() {
   const [order, setOrder] = useState<any>(null)
   const [pkg, setPkg] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
+  const [showTechInfo, setShowTechInfo] = useState(false)
 
   useEffect(() => {
     if (session_id && package_id) createEsim()
@@ -134,15 +135,23 @@ export default function PaymentSuccess() {
         <Text style={s.sub}>Votre eSIM est prete a installer.</Text>
 
         <View style={s.infoBox}>
-          <View style={s.infoRow}>
+          <View style={[s.infoRow,{borderBottomWidth:0}]}>
             <Ionicons name="mail-outline" size={18} color={COLORS.violet} />
             <Text style={s.infoTxt}>QR code envoye par email</Text>
           </View>
-          <View style={[s.infoRow,{borderBottomWidth:0}]}>
-            <Ionicons name="server-outline" size={18} color={COLORS.violet} />
-            <Text style={s.infoTxt}>ICCID : {order?.sim_iccid ?? '-'}</Text>
-          </View>
         </View>
+
+        {!!order?.sim_iccid && (
+          <View style={s.techBox}>
+            <TouchableOpacity style={s.techToggle} onPress={() => setShowTechInfo(v => !v)}>
+              <Text style={s.techToggleTxt}>Informations techniques</Text>
+              <Ionicons name={showTechInfo ? 'chevron-up' : 'chevron-down'} size={16} color={COLORS.textMuted} />
+            </TouchableOpacity>
+            {showTechInfo && (
+              <Text style={s.techDetail}>ICCID : {order.sim_iccid}</Text>
+            )}
+          </View>
+        )}
 
         {order?.apple_installation_url && (
           <View style={s.installBox}>
@@ -215,11 +224,15 @@ const s = StyleSheet.create({
   infoBox:{backgroundColor:'#fff',borderRadius:16,padding:16,marginBottom:12,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
   infoRow:{flexDirection:'row',alignItems:'center',gap:10,paddingVertical:9,borderBottomWidth:0.5,borderBottomColor:'#f5f5f5'},
   infoTxt:{fontSize:14,color:COLORS.text,fontWeight:'500'},
+  techBox:{marginBottom:12},
+  techToggle:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,paddingVertical:6},
+  techToggleTxt:{fontSize:12,color:COLORS.textMuted,fontWeight:'600'},
+  techDetail:{fontSize:12,color:'#aaa',textAlign:'center',marginTop:2},
   installBox:{backgroundColor:'#fff',borderRadius:16,padding:16,marginBottom:16,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
   installTitle:{fontSize:15,fontWeight:'700',color:COLORS.text,marginBottom:6},
   installSub:{fontSize:13,color:'#888',lineHeight:20,marginBottom:16},
   codeWrap:{alignItems:'center',marginBottom:16},
-  codeLabel:{fontSize:12,color:'#999',fontWeight:'600',textTransform:'uppercase',letterSpacing:0.5,marginBottom:10},
+  codeLabel:{fontSize:12,color:COLORS.textMuted,fontWeight:'600',textTransform:'uppercase',letterSpacing:0.5,marginBottom:10},
   codeRow:{flexDirection:'row',gap:10},
   codeBox:{width:52,height:60,backgroundColor:COLORS.bg,borderRadius:12,justifyContent:'center',alignItems:'center',borderWidth:1.5,borderColor:'rgba(210,81,216,0.3)'},
   codeDigit:{fontSize:28,fontWeight:'800',color:COLORS.violet},

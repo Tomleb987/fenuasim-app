@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking, ActivityIndicator, Alert } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -36,9 +36,18 @@ export default function AccountScreen() {
     if (data?.full_name?.trim()) setFullName(data.full_name.trim())
   }
 
-  async function handleLogout() {
-    await supabase.auth.signOut()
-    router.replace('/(auth)/login')
+  function handleLogout() {
+    Alert.alert('Déconnexion', 'Voulez-vous vraiment vous déconnecter ?', [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Se déconnecter',
+        style: 'destructive',
+        onPress: async () => {
+          await supabase.auth.signOut()
+          router.replace('/(auth)/login')
+        },
+      },
+    ])
   }
 
   return (
@@ -52,9 +61,6 @@ export default function AccountScreen() {
             <Text style={s.heroName}>{fullName ?? 'Mon compte'}</Text>
             <Text style={s.heroEmail}>{email ?? ''}</Text>
           </View>
-          <TouchableOpacity style={s.settingsBtn} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={20} color="#fff" />
-          </TouchableOpacity>
         </View>
       </LinearGradient>
 
@@ -76,7 +82,7 @@ export default function AccountScreen() {
             <Text style={s.profileRowTxt}>Mes appareils</Text>
             <Ionicons name="chevron-forward" size={18} color="#ccc" />
           </TouchableOpacity>
-          <TouchableOpacity style={[s.profileRow,{borderBottomWidth:0}]} onPress={() => router.push('/(tabs)')}>
+          <TouchableOpacity style={[s.profileRow,{borderBottomWidth:0}]} onPress={() => router.push('/esim')}>
             <View style={s.simIcon}>
               <Ionicons name="hardware-chip-outline" size={20} color={COLORS.violet} />
             </View>
@@ -87,22 +93,27 @@ export default function AccountScreen() {
 
         <Text style={s.secTitle}>Mes services</Text>
         <View style={s.card}>
-          <View style={[s.profileRow,{borderBottomWidth:0}]}>
+          <TouchableOpacity style={[s.profileRow, insurances.length === 0 && { borderBottomWidth: 0 }]} onPress={() => router.push('/insurance/form')}>
             <View style={s.shieldIcon}>
-              <Ionicons name="shield-checkmark-outline" size={20} color="#FD7F3C" />
+              <Ionicons name="shield-outline" size={20} color="#FD7F3C" />
             </View>
-            <Text style={s.profileRowTxt}>Mes assurances {loading ? '' : `(${insurances.length})`}</Text>
-          </View>
+            <Text style={s.profileRowTxt}>Souscrire une assurance voyage</Text>
+            <Ionicons name="chevron-forward" size={18} color="#ccc" />
+          </TouchableOpacity>
+          {loading ? (
+            <View style={[s.profileRow,{borderBottomWidth:0}]}>
+              <ActivityIndicator size="small" color={COLORS.violet} />
+              <Text style={[s.profileRowTxt,{marginLeft:10}]}>Chargement de vos services...</Text>
+            </View>
+          ) : insurances.length > 0 && (
+            <View style={[s.profileRow,{borderBottomWidth:0}]}>
+              <View style={s.shieldIcon}>
+                <Ionicons name="shield-checkmark-outline" size={20} color="#FD7F3C" />
+              </View>
+              <Text style={s.profileRowTxt}>Mes assurances ({insurances.length})</Text>
+            </View>
+          )}
         </View>
-
-        {insurances.length === 0 && !loading && (
-          <View style={s.emptyCard}>
-            <Text style={s.emptyTxt}>Aucune assurance pour le moment</Text>
-            <TouchableOpacity onPress={() => router.push('/insurance/form')}>
-              <Text style={s.emptyLink}>En savoir plus →</Text>
-            </TouchableOpacity>
-          </View>
-        )}
         {insurances.map(o => (
           <View key={o.id} style={s.card}>
             <View style={s.cardHead}>
@@ -130,7 +141,14 @@ export default function AccountScreen() {
               // ou ils seraient utilises plus tard.
               const docUrl = o.contract_link || o.attestation_url_ava || o.certificate_url
               return docUrl ? (
-                <TouchableOpacity style={s.installBtn} onPress={() => Linking.openURL(docUrl)}>
+                <TouchableOpacity
+                  style={s.installBtn}
+                  onPress={() =>
+                    Linking.openURL(docUrl).catch(() =>
+                      Alert.alert('Erreur', "Impossible d'ouvrir le contrat, réessayez plus tard.")
+                    )
+                  }
+                >
                   <Ionicons name="document-text-outline" size={15} color="#FD7F3C" />
                   <Text style={[s.installTxt, {color:'#FD7F3C'}]}>Voir le contrat</Text>
                 </TouchableOpacity>
@@ -183,15 +201,11 @@ const s = StyleSheet.create({
   avatarTxt:{color:'#fff',fontSize:22,fontWeight:'800'},
   heroName:{color:'#fff',fontSize:16,fontWeight:'800'},
   heroEmail:{color:'rgba(255,255,255,0.8)',fontSize:12,marginTop:2},
-  settingsBtn:{backgroundColor:'rgba(255,255,255,0.2)',borderRadius:20,width:36,height:36,justifyContent:'center',alignItems:'center'},
   scroll:{flex:1,padding:16},
   secTitle:{fontSize:16,fontWeight:'700',color:COLORS.text,marginBottom:12,marginTop:4},
   secTitleMuted:{fontSize:12,fontWeight:'700',color:'#bbb',textTransform:'uppercase',letterSpacing:0.3,marginBottom:8,marginTop:20},
   deleteAccountRow:{paddingVertical:10},
   deleteAccountTxt:{fontSize:13,fontWeight:'600',color:'#B00020'},
-  emptyCard:{backgroundColor:'#fff',borderRadius:16,padding:16,marginBottom:10,alignItems:'center',shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
-  emptyTxt:{fontSize:13,color:COLORS.textMuted,marginBottom:8},
-  emptyLink:{fontSize:13,fontWeight:'700',color:COLORS.violet},
   card:{backgroundColor:'#fff',borderRadius:16,padding:16,marginBottom:10,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
   profileRow:{flexDirection:'row',alignItems:'center',gap:12,paddingVertical:10,borderBottomWidth:0.5,borderBottomColor:'#f5f5f5'},
   profileRowTxt:{flex:1,fontSize:14,fontWeight:'600',color:COLORS.text},
@@ -205,7 +219,7 @@ const s = StyleSheet.create({
   pillActive:{backgroundColor:COLORS.successBg},
   pillActiveTxt:{color:COLORS.success},
   pillExpired:{backgroundColor:'#F0F0F0'},
-  pillExpiredTxt:{color:'#999'},
+  pillExpiredTxt:{color:COLORS.textMuted},
   installBtn:{flexDirection:'row',alignItems:'center',gap:6,marginTop:10,paddingTop:10,borderTopWidth:0.5,borderTopColor:'#f0f0f0'},
   installTxt:{color:COLORS.violet,fontSize:13,fontWeight:'600'},
   newEsimCta:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:'#fff',borderRadius:16,padding:14,marginBottom:16,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},

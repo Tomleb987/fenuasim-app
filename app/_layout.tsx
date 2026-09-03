@@ -1,45 +1,246 @@
 import React from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Stack, useRouter, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
-import { View, Text, ActivityIndicator, Animated, Image } from 'react-native'
+import { View, Animated, Image, Easing, Dimensions } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { supabase } from '../lib/supabase'
 import { Session } from '@supabase/supabase-js'
 import { COLORS } from '../constants/theme'
 
-function SplashScreen() {
-  const scale = React.useRef(new Animated.Value(0.8)).current
-  const opacity = React.useRef(new Animated.Value(0)).current
+const BAR_HEIGHTS = [10, 15, 20, 25]
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window')
+const STREAK_LENGTH = Math.hypot(SCREEN_W, SCREEN_H) * 1.2
+
+function SignalBars({ color }: { color: string }) {
+  const bars = useRef(BAR_HEIGHTS.map(() => new Animated.Value(0.35))).current
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 50, friction: 7 }),
-      Animated.timing(opacity, { toValue: 1, duration: 600, useNativeDriver: true }),
-    ]).start()
+    const loops = bars.map((bar, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(i * 130),
+          Animated.timing(bar, { toValue: 1, duration: 380, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+          Animated.timing(bar, { toValue: 0.35, duration: 380, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+          Animated.delay((BAR_HEIGHTS.length - 1 - i) * 130),
+        ])
+      )
+    )
+    loops.forEach((l) => l.start())
+    return () => loops.forEach((l) => l.stop())
   }, [])
 
   return (
-    <LinearGradient
-      colors={['#D251D8', '#FD7F3C']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
-    >
-      <StatusBar style="light" />
-      <Animated.View style={{ transform: [{ scale }], opacity, alignItems: 'center' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-          <Image source={require('../assets/images/logo-white.png')} style={{ width: 260, height: 100, resizeMode: 'contain', borderRadius: 16, overflow: 'hidden' }} />
+    <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 5, height: 25 }}>
+      {bars.map((bar, i) => (
+        <Animated.View
+          key={i}
+          style={{
+            width: 5,
+            height: BAR_HEIGHTS[i],
+            borderRadius: 2.5,
+            backgroundColor: color,
+            transform: [{ scaleY: bar }],
+          }}
+        />
+      ))}
+    </View>
+  )
+}
 
+function PulseRings() {
+  const rings = useRef([0, 1, 2].map(() => ({ scale: new Animated.Value(0.5), opacity: new Animated.Value(0) }))).current
+
+  useEffect(() => {
+    const loops = rings.map((ring, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(i * 550),
+          Animated.parallel([
+            Animated.timing(ring.scale, { toValue: 1.6, duration: 1800, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+            Animated.sequence([
+              Animated.timing(ring.opacity, { toValue: 0.55, duration: 260, useNativeDriver: true }),
+              Animated.timing(ring.opacity, { toValue: 0, duration: 1540, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+            ]),
+          ]),
+          Animated.delay((2 - i) * 550 + 200),
+        ])
+      )
+    )
+    loops.forEach((l) => {
+      l.reset?.()
+      l.start()
+    })
+    return () => loops.forEach((l) => l.stop())
+  }, [])
+
+  return (
+    <>
+      {rings.map((ring, i) => (
+        <Animated.View
+          key={i}
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            marginTop: -130,
+            marginLeft: -130,
+            width: 260,
+            height: 260,
+            borderRadius: 130,
+            borderWidth: 1.5,
+            borderColor: 'rgba(255,255,255,0.9)',
+            opacity: ring.opacity,
+            transform: [{ scale: ring.scale }],
+          }}
+        />
+      ))}
+    </>
+  )
+}
+
+function AmbientBlobs() {
+  const drift1 = useRef(new Animated.Value(0)).current
+  const drift2 = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    const l1 = Animated.loop(
+      Animated.sequence([
+        Animated.timing(drift1, { toValue: 1, duration: 7000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(drift1, { toValue: 0, duration: 7000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    )
+    const l2 = Animated.loop(
+      Animated.sequence([
+        Animated.timing(drift2, { toValue: 1, duration: 9000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(drift2, { toValue: 0, duration: 9000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    )
+    l1.start()
+    l2.start()
+    return () => {
+      l1.stop()
+      l2.stop()
+    }
+  }, [])
+
+  const translate1X = drift1.interpolate({ inputRange: [0, 1], outputRange: [-16, 16] })
+  const translate1Y = drift1.interpolate({ inputRange: [0, 1], outputRange: [-10, 14] })
+  const translate2X = drift2.interpolate({ inputRange: [0, 1], outputRange: [14, -14] })
+  const translate2Y = drift2.interpolate({ inputRange: [0, 1], outputRange: [10, -16] })
+
+  return (
+    <>
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          top: -80,
+          left: -60,
+          width: 260,
+          height: 260,
+          borderRadius: 130,
+          backgroundColor: 'rgba(255,255,255,0.10)',
+          transform: [{ translateX: translate1X }, { translateY: translate1Y }],
+        }}
+      />
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          bottom: -100,
+          right: -70,
+          width: 320,
+          height: 320,
+          borderRadius: 160,
+          backgroundColor: 'rgba(255,255,255,0.08)',
+          transform: [{ translateX: translate2X }, { translateY: translate2Y }],
+        }}
+      />
+    </>
+  )
+}
+
+function DiagonalStreak() {
+  const sweep = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.delay(500),
+        Animated.timing(sweep, { toValue: 1, duration: 2000, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }),
+        Animated.delay(1100),
+        Animated.timing(sweep, { toValue: 0, duration: 0, useNativeDriver: true }),
+      ])
+    )
+    loop.start()
+    return () => loop.stop()
+  }, [])
+
+  const translateX = sweep.interpolate({ inputRange: [0, 1], outputRange: [-SCREEN_W * 0.9, SCREEN_W * 0.9] })
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        top: SCREEN_H / 2 - 60,
+        left: SCREEN_W / 2 - STREAK_LENGTH / 2,
+        width: STREAK_LENGTH,
+        height: 120,
+        transform: [{ rotate: '-28deg' }, { translateX }],
+      }}
+    >
+      <LinearGradient
+        colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.3)', 'rgba(255,255,255,0)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={{ flex: 1 }}
+      />
+    </Animated.View>
+  )
+}
+
+function SplashScreen({ exiting, onExited }: { exiting: boolean; onExited: () => void }) {
+  const exitOpacity = useRef(new Animated.Value(1)).current
+  const exitScale = useRef(new Animated.Value(1)).current
+
+  useEffect(() => {
+    if (!exiting) return
+    Animated.parallel([
+      Animated.timing(exitOpacity, { toValue: 0, duration: 380, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(exitScale, { toValue: 1.06, duration: 380, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+    ]).start(({ finished }) => {
+      if (finished) onExited()
+    })
+  }, [exiting])
+
+  return (
+    <Animated.View style={{ flex: 1, opacity: exitOpacity, transform: [{ scale: exitScale }] }}>
+      <LinearGradient
+        colors={['#D251D8', '#FD7F3C']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+      >
+        <StatusBar style="light" />
+        <AmbientBlobs />
+        <DiagonalStreak />
+
+        <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+          <PulseRings />
+          <Image
+            source={require('../assets/images/logo-white.png')}
+            style={{ width: 260, height: 100, resizeMode: 'contain', borderRadius: 16 }}
+          />
         </View>
-        <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.85)', marginTop: 10, fontWeight: '500', letterSpacing: 1 }}>
-          Votre eSIM pour voyager
-        </Text>
-      </Animated.View>
-      <View style={{ position: 'absolute', bottom: 60 }}>
-        <ActivityIndicator color="rgba(255,255,255,0.6)" />
-      </View>
-    </LinearGradient>
+
+        <View style={{ position: 'absolute', bottom: 64 }}>
+          <SignalBars color="rgba(255,255,255,0.75)" />
+        </View>
+      </LinearGradient>
+    </Animated.View>
   )
 }
 
@@ -47,6 +248,8 @@ export default function RootLayout() {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [showSplash, setShowSplash] = useState(true)
+  const [minTimeDone, setMinTimeDone] = useState(false)
+  const [splashExiting, setSplashExiting] = useState(false)
   // Une session issue d'un lien de recuperation de mot de passe ne doit jamais
   // etre traitee comme une connexion normale : sinon le garde ci-dessous
   // renverrait l'utilisateur vers l'accueil authentifie au lieu de l'ecran de
@@ -56,10 +259,9 @@ export default function RootLayout() {
   const segments = useSegments()
 
   useEffect(() => {
-    // Splash minimum 2.5 secondes (le rendu reste affiche tant que showSplash OU
-    // loading est vrai : ce timer fixe seulement le minimum, la verification de
-    // session peut le depasser si elle est plus lente).
-    const splashTimer = setTimeout(() => setShowSplash(false), 2500)
+    // Duree minimum d'affichage du splash (hors animation de sortie) : la
+    // verification de session peut la depasser si elle est plus lente.
+    const splashTimer = setTimeout(() => setMinTimeDone(true), 4000)
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
@@ -79,6 +281,10 @@ export default function RootLayout() {
   }, [])
 
   useEffect(() => {
+    if (!loading && minTimeDone && showSplash && !splashExiting) setSplashExiting(true)
+  }, [loading, minTimeDone, showSplash, splashExiting])
+
+  useEffect(() => {
     if (loading || showSplash) return
     const inAuth = segments[0] === '(auth)'
     if (isPasswordRecovery) {
@@ -90,7 +296,9 @@ export default function RootLayout() {
     if (session && inAuth) router.replace('/(tabs)')
   }, [session, loading, showSplash, segments, isPasswordRecovery])
 
-  if (showSplash || loading) return <SplashScreen />
+  if (showSplash || loading) {
+    return <SplashScreen exiting={splashExiting} onExited={() => setShowSplash(false)} />
+  }
 
   return (
     <>

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Animated, Easing } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -11,7 +11,14 @@ import { useTravelers } from '../../hooks/useTravelers'
 import { useDevices } from '../../hooks/useDevices'
 import { useEsimAssignments } from '../../hooks/useEsimAssignments'
 import { usePackageInfo, looksLikeTechnicalSlug } from '../../hooks/usePackageInfo'
+import { getFR } from '../../lib/regionNames'
 import dayjs from 'dayjs'
+
+// Ordre d'affichage voulu pour les forfaits regionaux ; seules les regions
+// reellement presentes et actives en base (verifie par requete reelle) sont
+// gardees au chargement, jamais inventees.
+const REGION_KEYS = ['Europe', 'Asia', 'North America', 'Oceania', 'Global']
+const REGION_ICON: Record<string, string> = { Europe: '🇪🇺', Asia: '🌏', 'North America': '🌎', Oceania: '🏝️', Global: '🌍' }
 
 const TOP_DEST = [
   { nameFR: 'Japon', slug: 'japan', c1: '#FF6B6B', c2: '#FF8E53', flag: '🇯🇵' },
@@ -22,16 +29,70 @@ const TOP_DEST = [
   { nameFR: 'Royaume-Uni', slug: 'united-kingdom', c1: '#141E30', c2: '#243B55', flag: '🇬🇧' },
 ]
 
+function ConsoGauge({ pct, used, remaining }: { pct: number; used: string; remaining: string }) {
+  const width = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    Animated.timing(width, { toValue: pct, duration: 900, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start()
+  }, [pct])
+
+  const barColors = pct > 80 ? (['#FD7F3C', '#e74c3c'] as const) : pct > 50 ? (['#FFB84D', '#FD7F3C'] as const) : (['#D251D8', '#FD7F3C'] as const)
+  const statusColor = pct > 80 ? '#B00020' : pct > 50 ? '#9A6200' : COLORS.success
+  const badgeBg = pct > 80 ? '#FDECEA' : pct > 50 ? '#FFF3DC' : COLORS.successBg
+  const hint = pct > 80 ? 'Pensez à recharger' : pct > 50 ? 'Plus de la moitié utilisée' : 'Consommation faible'
+  const widthPct = width.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] })
+
+  return (
+    <View style={s.consoWrap}>
+      <View style={s.consoValues}>
+        <Text style={s.consoValUsed}>{used} <Text style={s.consoValUnit}>utilisé</Text></Text>
+        <Text style={s.consoValRem}>{remaining} <Text style={s.consoValUnit}>restant</Text></Text>
+      </View>
+      <View style={s.barTrack}>
+        <Animated.View style={[s.barFillWrap, { width: widthPct }]}>
+          <LinearGradient colors={barColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.barFill} />
+        </Animated.View>
+      </View>
+      <View style={s.consoFooter}>
+        <Text style={s.consoHint}>{hint}</Text>
+        <View style={[s.pctBadge, { backgroundColor: badgeBg }]}>
+          <Text style={[s.pctBadgeTxt, { color: statusColor }]}>{pct}%</Text>
+        </View>
+      </View>
+    </View>
+  )
+}
+
 export default function HomeScreen() {
   const router = useRouter()
   const [esims, setEsims] = useState<any[]>([])
+  const [regions, setRegions] = useState<{ nameFR: string; slug: string; minPrice: number; key: string }[]>([])
   const { fetchUsage, getPct, getUsedStr, getRemainingStr, isLoading, hasReliableUsage } = useDataUsage()
   const { travelers } = useTravelers()
   const { devices } = useDevices()
   const { byIccid: getAssignment } = useEsimAssignments()
   const { fetchPackages, getPackageDisplay } = usePackageInfo()
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { loadData(); loadRegions() }, [])
+
+  async function loadRegions() {
+    const { data } = await supabase
+      .from('airalo_packages')
+      .select('region_fr, region, slug, final_price_xpf')
+      .eq('status', 'active')
+      .gt('final_price_xpf', 0)
+      .in('region', REGION_KEYS)
+    if (!data) return
+    const map: Record<string, { nameFR: string; slug: string; minPrice: number; key: string }> = {}
+    data.forEach(p => {
+      if (!REGION_KEYS.includes(p.region)) return
+      if (!map[p.region] || p.final_price_xpf < map[p.region].minPrice) {
+        map[p.region] = { nameFR: getFR(p.region_fr, p.region), slug: p.slug, minPrice: p.final_price_xpf, key: p.region }
+      }
+    })
+    const ordered = REGION_KEYS.map(k => map[k]).filter((r): r is { nameFR: string; slug: string; minPrice: number; key: string } => !!r)
+    setRegions(ordered)
+  }
 
   async function loadData() {
     const { data: { session } } = await supabase.auth.getSession()
@@ -95,11 +156,32 @@ export default function HomeScreen() {
             ))}
           </ScrollView>
 
+          {regions.length > 0 && (
+            <>
+              <View style={s.secHead}>
+                <Text style={s.secTitle}>Forfaits régionaux</Text>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.destScroll}>
+                {regions.map(r => (
+                  <TouchableOpacity
+                    key={r.key}
+                    style={s.regionCard}
+                    onPress={() => router.push({ pathname: '/esim/[country]', params: { country: r.slug } })}
+                  >
+                    <Text style={s.regionIcon}>{REGION_ICON[r.key] ?? '🌐'}</Text>
+                    <Text style={s.regionName}>{r.nameFR}</Text>
+                    <Text style={s.regionPrice}>Dès {Math.round(r.minPrice).toLocaleString()} XPF</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </>
+          )}
+
           {esims.length > 0 && (
             <>
               <View style={s.secHead}>
                 <Text style={s.secTitle}>Mes eSIM</Text>
-                <TouchableOpacity onPress={() => router.push('/(tabs)/account')}>
+                <TouchableOpacity onPress={() => router.push('/esim')}>
                   <Text style={s.secLink}>Voir tout</Text>
                 </TouchableOpacity>
               </View>
@@ -110,7 +192,7 @@ export default function HomeScreen() {
                 const used = iccid ? getUsedStr(iccid) : null
                 const remaining = iccid ? getRemainingStr(iccid) : null
                 const isExpired = e.expires_at && dayjs(e.expires_at).isBefore(dayjs())
-                const statusColor = isExpired ? '#999' : COLORS.success
+                const statusColor = isExpired ? COLORS.textMuted : COLORS.success
                 const statusLabel = isExpired ? 'Expirée' : 'Active'
 
                 const assignment = getAssignment(iccid)
@@ -188,7 +270,7 @@ export default function HomeScreen() {
                         })}
                       >
                         <View style={{flex:1}}>
-                          <Text style={s.unassignedTxt}>Non attribuee {last4 ? `· ••••${last4}` : ''}</Text>
+                          <Text style={s.unassignedTxt}>Non attribuée {last4 ? `· ••••${last4}` : ''}</Text>
                         </View>
                         <Text style={s.assignLink}>Attribuer</Text>
                         <Ionicons name="chevron-forward" size={14} color={COLORS.violet} />
@@ -206,35 +288,7 @@ export default function HomeScreen() {
                         <Text style={s.consoLoading}>Consommation pas encore disponible</Text>
                       </View>
                     ) : used && used !== '-' ? (
-                      <View style={s.consoWrap}>
-                        <View style={s.consoLabels}>
-                          <Text style={s.consoLabel}>Utilise</Text>
-                          <Text style={s.consoLabel}>Restant</Text>
-                        </View>
-                        <View style={s.consoValues}>
-                          <Text style={s.consoValUsed}>{used}</Text>
-                          <Text style={s.consoValRem}>{remaining}</Text>
-                        </View>
-                        <View style={s.barTrack}>
-                          <LinearGradient
-                            colors={pct > 80 ? ['#FD7F3C','#e74c3c'] : ['#D251D8','#FD7F3C']}
-                            start={{x:0,y:0}} end={{x:1,y:0}}
-                            style={[s.barFill,{width: `${pct}%`}]}
-                          />
-                        </View>
-                        <View style={s.consoFooter}>
-                          <View style={s.consoGaugeLabels}>
-                            <Text style={s.consoGaugeLabel}>0%</Text>
-                            <Text style={s.consoGaugeLabel}>50%</Text>
-                            <Text style={s.consoGaugeLabel}>100%</Text>
-                          </View>
-                          <View style={[s.pctBadge, {backgroundColor: pct > 80 ? '#FDECEA' : pct > 50 ? '#FFF3DC' : '#E6F9F2'}]}>
-                            <Text style={[s.pctBadgeTxt, {color: pct > 80 ? '#B00020' : pct > 50 ? '#9A6200' : COLORS.success}]}>
-                              {pct}% utilise
-                            </Text>
-                          </View>
-                        </View>
-                      </View>
+                      <ConsoGauge pct={pct} used={used} remaining={remaining ?? '-'} />
                     ) : (
                       <View style={s.forfaitRow}>
                         <View style={s.chip}>
@@ -292,23 +346,23 @@ export default function HomeScreen() {
             <Text style={s.secTitle}>Actions rapides</Text>
           </View>
           <View style={s.grid}>
-            <TouchableOpacity style={s.gridCard} onPress={() => router.push('/insurance/form')}>
-              <View style={[s.gridIcon,{backgroundColor:'rgba(253,127,60,0.1)'}]}>
-                <Ionicons name="shield-outline" size={24} color="#FD7F3C" />
-              </View>
-              <Text style={s.gridLabel}>Assurance voyage</Text>
-            </TouchableOpacity>
             <TouchableOpacity style={s.gridCard} onPress={() => router.push('/(tabs)/account')}>
               <View style={[s.gridIcon,{backgroundColor:'rgba(10,135,84,0.1)'}]}>
                 <Ionicons name="receipt-outline" size={24} color={COLORS.success} />
               </View>
               <Text style={s.gridLabel}>Mes commandes</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={s.gridCard}>
+            <TouchableOpacity style={s.gridCard} onPress={() => router.push('/support')}>
               <View style={[s.gridIcon,{backgroundColor:'rgba(136,135,128,0.15)'}]}>
                 <Ionicons name="headset-outline" size={24} color="#888" />
               </View>
               <Text style={s.gridLabel}>Support</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.gridCard} onPress={() => router.push('/insurance/form')}>
+              <View style={[s.gridIcon,{backgroundColor:'rgba(253,127,60,0.12)'}]}>
+                <Ionicons name="shield-outline" size={24} color="#FD7F3C" />
+              </View>
+              <Text style={s.gridLabel}>Assurance voyage</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.gridCard} onPress={() => router.push('/(tabs)/account')}>
               <View style={[s.gridIcon,{backgroundColor:'rgba(210,81,216,0.1)'}]}>
@@ -342,6 +396,10 @@ const s = StyleSheet.create({
   destCard:{width:110,height:80,borderRadius:14,marginRight:10,justifyContent:'flex-end',padding:8,alignItems:'center'},
   destFlag:{fontSize:30,marginBottom:2},
   destName:{color:'#fff',fontSize:11,fontWeight:'700',textAlign:'center'},
+  regionCard:{width:118,backgroundColor:'#fff',borderRadius:14,marginRight:10,padding:12,alignItems:'flex-start',shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
+  regionIcon:{fontSize:22,marginBottom:6},
+  regionName:{fontSize:13,fontWeight:'700',color:COLORS.text},
+  regionPrice:{fontSize:11,color:COLORS.textMuted,marginTop:3},
   esimCard:{backgroundColor:'#fff',borderRadius:16,padding:16,marginBottom:10,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
   esimHead:{flexDirection:'row',alignItems:'center',gap:10,marginBottom:10},
   simIcon:{width:40,height:40,borderRadius:12,backgroundColor:'rgba(210,81,216,0.1)',justifyContent:'center',alignItems:'center'},
@@ -358,16 +416,15 @@ const s = StyleSheet.create({
   consoRow:{flexDirection:'row',alignItems:'center',gap:8,paddingVertical:4},
   consoLoading:{fontSize:12,color:COLORS.textMuted},
   consoWrap:{marginBottom:6},
-  consoLabels:{flexDirection:'row',justifyContent:'space-between',marginBottom:6},
-  consoLabel:{fontSize:12,color:COLORS.textMuted},
-  barTrack:{backgroundColor:'#F0F0F0',borderRadius:20,height:7,overflow:'hidden',marginBottom:4},
-  barFill:{height:'100%',borderRadius:20},
+  barTrack:{backgroundColor:'#F0F0F0',borderRadius:20,height:8,overflow:'hidden',marginBottom:8},
+  barFillWrap:{height:'100%',borderRadius:20,overflow:'hidden'},
+  barFill:{flex:1,height:'100%'},
   consoValues:{flexDirection:'row',justifyContent:'space-between',marginBottom:8},
   consoValUsed:{fontSize:16,fontWeight:'800',color:COLORS.violet},
   consoValRem:{fontSize:16,fontWeight:'800',color:COLORS.success},
-  consoFooter:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginTop:6},
-  consoGaugeLabels:{flexDirection:'row',gap:24},
-  consoGaugeLabel:{fontSize:10,color:'#ccc',fontWeight:'600'},
+  consoValUnit:{fontSize:11,fontWeight:'600',color:COLORS.textMuted},
+  consoFooter:{flexDirection:'row',justifyContent:'space-between',alignItems:'center'},
+  consoHint:{fontSize:12,color:COLORS.textMuted,flex:1,marginRight:8},
   pctBadge:{paddingHorizontal:10,paddingVertical:3,borderRadius:20},
   pctBadgeTxt:{fontSize:11,fontWeight:'700'},
   forfaitRow:{flexDirection:'row',gap:8},
