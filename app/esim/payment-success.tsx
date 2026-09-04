@@ -1,26 +1,23 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
-import * as SecureStore from 'expo-secure-store'
 import { supabase } from '../../lib/supabase'
 import { COLORS } from '../../constants/theme'
 
-// Phase 4D : aucune contrainte DB ni webhook mobile distinct ne protege
-// aujourd'hui contre un second appel a /api/create-airalo-order pour le
-// meme paiement (audit PHASE4D_AIRALO_RLS.md -- airalo_orders n'a aucune
-// colonne stripe_session_id, seule une contrainte UNIQUE(order_id) Airalo
-// existe, qui n'empeche pas un second APPEL, seulement une seconde
-// insertion locale du meme resultat). Ce cache local, scope par
-// session_id Stripe, garantit qu'un remontage de cet ecran (retour app,
-// double ouverture du deep link, etc.) ne redeclenche jamais un second
-// appel reseau pour la meme session -- il reaffiche simplement le resultat
-// deja obtenu.
-function orderCacheKey(sessionId: string) {
-  return `esim_order_result_${sessionId}`
-}
+// 2026-09-04 : cet ecran ne declenche plus rien. Auparavant il appelait
+// lui-meme fenuasim.com/api/create-airalo-order depuis le client, sans
+// en-tete d'autorisation -- l'endpoint repondait 401 et le paiement etait
+// encaisse sans qu'aucune eSIM ne soit livree. La livraison est desormais
+// declenchee cote serveur par le webhook Stripe, apres verification du
+// paiement (table esim_purchase_orders, fonction stripe-webhook). Cet ecran
+// se contente de lire l'avancement, ce qui le rend naturellement idempotent :
+// un remontage, un retour dans l'app ou une double ouverture du deep link ne
+// peuvent plus provoquer de seconde commande Airalo.
+const POLL_INTERVAL_MS = 2000
+const POLL_MAX_ATTEMPTS = 30 // ~60 s
 
 export default function PaymentSuccess() {
   const router = useRouter()
@@ -29,72 +26,68 @@ export default function PaymentSuccess() {
   const [order, setOrder] = useState<any>(null)
   const [pkg, setPkg] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
   const [showTechInfo, setShowTechInfo] = useState(false)
+  const cancelled = useRef(false)
 
   useEffect(() => {
-    if (session_id && package_id) createEsim()
+    cancelled.current = false
+    if (session_id) watchOrder()
+    return () => { cancelled.current = true }
   }, [session_id, package_id])
 
-  async function createEsim() {
+  async function watchOrder() {
     setLoading(true)
+    setError(null)
+    setPending(false)
     try {
-      // Un resultat deja obtenu pour cette session Stripe precise est
-      // reutilise tel quel -- jamais de second appel a l'API de creation.
-      const cached = await SecureStore.getItemAsync(orderCacheKey(session_id))
-      if (cached) {
-        const { order: cachedOrder, pkg: cachedPkg } = JSON.parse(cached)
-        setOrder(cachedOrder)
-        setPkg(cachedPkg)
-        setLoading(false)
-        return
-      }
-
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Non connecte')
 
-      // Recuperer les infos du package
-      const { data: pkgData } = await supabase
-        .from('airalo_packages')
-        .select('*')
-        .eq('id', package_id)
-        .single()
-
-      if (!pkgData) throw new Error('Package introuvable')
-      setPkg(pkgData)
-
-      // Appel API Next.js fenuasim.com
-      const response = await fetch('https://fenuasim.com/api/create-airalo-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          packageId: pkgData.id,
-          airalo_id: pkgData.airalo_id ?? pkgData.slug,
-          customerEmail: session.user.email,
-          customerName: session.user.email,
-          customerFirstname: '',
-          quantity: 1,
-          description: `Mobile app - ${pkgData.name}`,
-        })
-      })
-
-      const data = await response.json()
-
-      if (!response.ok || data.error) {
-        throw new Error(data.error ?? 'Erreur creation eSIM')
+      if (package_id) {
+        const { data: pkgData } = await supabase
+          .from('airalo_packages')
+          .select('*')
+          .eq('id', package_id)
+          .single()
+        if (pkgData) setPkg(pkgData)
       }
 
-      setOrder(data.order)
+      for (let attempt = 0; attempt < POLL_MAX_ATTEMPTS; attempt++) {
+        if (cancelled.current) return
 
-      // Memorise le resultat reussi pour cette session precise -- protege
-      // tout remontage ulterieur de cet ecran contre un second appel.
-      await SecureStore.setItemAsync(
-        orderCacheKey(session_id),
-        JSON.stringify({ order: data.order, pkg: pkgData })
-      )
+        const { data: row } = await supabase
+          .from('esim_purchase_orders')
+          .select('*')
+          .eq('stripe_session_id', session_id)
+          .maybeSingle()
+
+        if (row?.status === 'completed') {
+          // id = identifiant de commande Airalo, attendu par l'ecran d'attribution.
+          setOrder({ ...row, id: row.airalo_order_id })
+          setLoading(false)
+          return
+        }
+
+        if (row?.status === 'failed') {
+          throw new Error(row.last_error || "La creation de votre eSIM a echoue.")
+        }
+
+        await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS))
+      }
+
+      // Delai depasse : le paiement est enregistre cote serveur et la livraison
+      // suit son cours. On ne montre jamais d'erreur dans ce cas -- l'argent a
+      // bien ete encaisse et la commande existe.
+      if (!cancelled.current) {
+        setPending(true)
+        setLoading(false)
+      }
     } catch (e: any) {
-      setError(e.message)
-    } finally {
-      setLoading(false)
+      if (!cancelled.current) {
+        setError(e.message)
+        setLoading(false)
+      }
     }
   }
 
@@ -107,13 +100,29 @@ export default function PaymentSuccess() {
     </SafeAreaView>
   )
 
+  if (pending) return (
+    <SafeAreaView style={s.safe}>
+      <View style={s.center}>
+        <Ionicons name="time-outline" size={60} color={COLORS.violet} />
+        <Text style={s.errorTitle}>Paiement bien recu</Text>
+        <Text style={s.errorSub}>Votre eSIM est en cours de creation. Vous la retrouverez sur l'accueil et recevrez le QR code par email dans quelques instants.</Text>
+        <TouchableOpacity style={s.retryBtn} onPress={watchOrder}>
+          <Text style={s.retryTxt}>Actualiser</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push('/(tabs)')}>
+          <Text style={s.ghostTxt}>Retour a l'accueil</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  )
+
   if (error) return (
     <SafeAreaView style={s.safe}>
       <View style={s.center}>
         <Ionicons name="alert-circle-outline" size={60} color="#FD7F3C" />
         <Text style={s.errorTitle}>Une erreur est survenue</Text>
         <Text style={s.errorSub}>{error}</Text>
-        <TouchableOpacity style={s.retryBtn} onPress={createEsim}>
+        <TouchableOpacity style={s.retryBtn} onPress={watchOrder}>
           <Text style={s.retryTxt}>Reessayer</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => router.push('/(tabs)')}>
@@ -201,6 +210,20 @@ export default function PaymentSuccess() {
           </TouchableOpacity>
         )}
 
+        {!!order?.sim_iccid && (
+          <View style={s.upsellBox}>
+            <View style={s.upsellHead}>
+              <Ionicons name="shield-checkmark-outline" size={20} color={COLORS.violet} />
+              <Text style={s.upsellTitle}>Protégez votre voyage</Text>
+            </View>
+            <Text style={s.upsellSub}>Frais médicaux, annulation, bagages... souscrivez une assurance voyage AVA en quelques minutes.</Text>
+            <TouchableOpacity style={s.upsellBtn} onPress={() => router.push('/(tabs)/insurance')}>
+              <Text style={s.upsellBtnTxt}>Voir les offres d'assurance</Text>
+              <Ionicons name="arrow-forward" size={16} color={COLORS.violet} />
+            </TouchableOpacity>
+          </View>
+        )}
+
         <TouchableOpacity style={s.ghost} onPress={() => router.push('/(tabs)')}>
           <Text style={s.ghostTxt}>{order?.sim_iccid ? 'Plus tard' : "Retour a l'accueil"}</Text>
         </TouchableOpacity>
@@ -241,4 +264,10 @@ const s = StyleSheet.create({
   ctaTxt:{color:'#fff',fontSize:15,fontWeight:'800'},
   ghost:{width:'100%',padding:14,alignItems:'center',marginTop:8},
   ghostTxt:{color:COLORS.textMuted,fontSize:14,fontWeight:'500'},
+  upsellBox:{backgroundColor:'#fff',borderRadius:16,padding:16,marginTop:4,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
+  upsellHead:{flexDirection:'row',alignItems:'center',gap:8,marginBottom:6},
+  upsellTitle:{fontSize:15,fontWeight:'700',color:COLORS.text},
+  upsellSub:{fontSize:13,color:'#888',lineHeight:19,marginBottom:14},
+  upsellBtn:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,borderWidth:1.5,borderColor:COLORS.violet,borderRadius:12,paddingVertical:12},
+  upsellBtnTxt:{color:COLORS.violet,fontWeight:'700',fontSize:14},
 })

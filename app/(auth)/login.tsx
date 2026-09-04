@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
@@ -26,6 +26,7 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={s.safe}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.kav}>
+        <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
         <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:1}} style={s.hero}>
           <Text style={s.logo}>FENUASIM</Text>
           <Text style={s.heroSub}>Votre eSIM pour voyager connecté</Text>
@@ -53,6 +54,7 @@ export default function LoginScreen() {
             <Text style={s.switchTxt}>Pas de compte ? <Text style={s.switchLink}>Creer un compte</Text></Text>
           </TouchableOpacity>
         </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   )
@@ -61,6 +63,7 @@ export default function LoginScreen() {
 const s = StyleSheet.create({
   safe:{flex:1,backgroundColor:'#fff'},
   kav:{flex:1},
+  scroll:{flexGrow:1},
   hero:{padding:40,paddingTop:60,alignItems:'center'},
   logo:{color:'#fff',fontSize:28,fontWeight:'800',letterSpacing:1},
   heroSub:{color:'rgba(255,255,255,0.85)',fontSize:14,marginTop:8},
