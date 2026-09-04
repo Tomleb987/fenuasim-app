@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image, Platform, Linking } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -70,11 +70,13 @@ export default function PaymentSuccess() {
           // conversion et donc toute l'attribution.
           const { data: airaloRow } = await supabase
             .from('airalo_orders')
-            .select('id')
+            .select('id, qr_code_url, apple_installation_url, sharing_link, sharing_access_code, lpa, matching_id')
             .eq('order_id', row.airalo_order_id)
             .maybeSingle()
 
-          setOrder({ ...row, id: airaloRow?.id ?? null })
+          // airalo_orders fait foi : c'est la table que lisent tous les autres
+          // ecrans, et la seule remplie pour les commandes venues du site.
+          setOrder({ ...row, ...(airaloRow ?? {}), id: airaloRow?.id ?? null })
           setLoading(false)
           return
         }
@@ -142,8 +144,6 @@ export default function PaymentSuccess() {
     </SafeAreaView>
   )
 
-  const accessCode = order?.sim_iccid?.slice(-4) ?? '----'
-
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.wrap}>
@@ -172,32 +172,62 @@ export default function PaymentSuccess() {
           </View>
         )}
 
-        {order?.apple_installation_url && (
+        {(!!order?.qr_code_url || !!order?.apple_installation_url) && (
           <View style={s.installBox}>
-            <Text style={s.installTitle}>Installation directe</Text>
-            <Text style={s.installSub}>Installez votre eSIM directement sur cet appareil. Ce code identifie votre ligne.</Text>
-            <View style={s.codeWrap}>
-              <Text style={s.codeLabel}>Code d'acces</Text>
-              <View style={s.codeRow}>
-                {accessCode.split('').map((d: string, i: number) => (
-                  <View key={i} style={s.codeBox}>
-                    <Text style={s.codeDigit}>{d}</Text>
-                  </View>
-                ))}
+            <Text style={s.installTitle}>Installer votre eSIM</Text>
+
+            {Platform.OS === 'ios' && !!order?.apple_installation_url && (
+              <TouchableOpacity style={s.ctaWrap} onPress={() => Linking.openURL(order.apple_installation_url)}>
+                <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.cta}>
+                  <Ionicons name="download-outline" size={20} color="#fff" style={{marginRight:8}} />
+                  <Text style={s.ctaTxt}>Installer sur cet iPhone</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
+
+            {!!order?.qr_code_url && (
+              <>
+                <Text style={s.installSub}>Scannez ce QR code depuis un autre appareil :</Text>
+                <View style={s.qrWrap}>
+                  <Image source={{ uri: order.qr_code_url }} style={s.qrImg} resizeMode="contain" />
+                </View>
+              </>
+            )}
+
+            {(!!order?.lpa || !!order?.matching_id) && (
+              <View style={s.manualBox}>
+                {/* Chemin Android : le QR est affiche sur l'appareil meme ou l'eSIM
+                    doit etre installee, donc inscannable. La saisie manuelle de
+                    l'adresse SM-DP+ et du code d'activation est la seule voie. */}
+                <Text style={s.manualTitle}>Installation manuelle (Android)</Text>
+                {!!order?.lpa && (
+                  <>
+                    <Text style={s.manualLabel}>Adresse SM-DP+</Text>
+                    <Text style={s.manualValue} selectable>{order.lpa}</Text>
+                  </>
+                )}
+                {!!order?.matching_id && (
+                  <>
+                    <Text style={s.manualLabel}>Code d'activation</Text>
+                    <Text style={s.manualValue} selectable>{order.matching_id}</Text>
+                  </>
+                )}
+                <Text style={s.manualHint}>Reglages &gt; Reseau mobile &gt; Ajouter une eSIM &gt; Saisir manuellement</Text>
               </View>
-            </View>
-            <TouchableOpacity
-              style={s.ctaWrap}
-              onPress={() => {
-                const { Linking } = require('react-native')
-                Linking.openURL(order.apple_installation_url)
-              }}
-            >
-              <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.cta}>
-                <Ionicons name="download-outline" size={20} color="#fff" style={{marginRight:8}} />
-                <Text style={s.ctaTxt}>Installer mon eSIM</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+            )}
+
+            {!!order?.sharing_link && (
+              <TouchableOpacity style={s.cloudRow} onPress={() => Linking.openURL(order.sharing_link)}>
+                <Ionicons name="cloud-outline" size={20} color={COLORS.violet} />
+                <View style={s.cloudTxtWrap}>
+                  <Text style={s.cloudTitle}>Installer et suivre sur esims.cloud</Text>
+                  {!!order?.sharing_access_code && (
+                    <Text style={s.cloudSub}>Code d'acces : {order.sharing_access_code}</Text>
+                  )}
+                </View>
+                <Ionicons name="open-outline" size={16} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -263,12 +293,18 @@ const s = StyleSheet.create({
   techDetail:{fontSize:12,color:'#aaa',textAlign:'center',marginTop:2},
   installBox:{backgroundColor:'#fff',borderRadius:16,padding:16,marginBottom:16,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
   installTitle:{fontSize:15,fontWeight:'700',color:COLORS.text,marginBottom:6},
-  installSub:{fontSize:13,color:'#888',lineHeight:20,marginBottom:16},
-  codeWrap:{alignItems:'center',marginBottom:16},
-  codeLabel:{fontSize:12,color:COLORS.textMuted,fontWeight:'600',textTransform:'uppercase',letterSpacing:0.5,marginBottom:10},
-  codeRow:{flexDirection:'row',gap:10},
-  codeBox:{width:52,height:60,backgroundColor:COLORS.bg,borderRadius:12,justifyContent:'center',alignItems:'center',borderWidth:1.5,borderColor:'rgba(210,81,216,0.3)'},
-  codeDigit:{fontSize:28,fontWeight:'800',color:COLORS.violet},
+  installSub:{fontSize:13,color:'#888',lineHeight:20,marginBottom:12,marginTop:16},
+  qrWrap:{alignItems:'center',backgroundColor:'#fff',borderRadius:12,padding:12,borderWidth:1,borderColor:COLORS.border,marginBottom:16},
+  qrImg:{width:190,height:190},
+  manualBox:{backgroundColor:COLORS.bg,borderRadius:12,padding:14,borderWidth:1,borderColor:COLORS.border,marginBottom:16},
+  manualTitle:{fontSize:13,fontWeight:'800',color:COLORS.text,marginBottom:10},
+  manualLabel:{fontSize:11,fontWeight:'700',color:COLORS.textMuted,textTransform:'uppercase',letterSpacing:0.3,marginBottom:3},
+  manualValue:{fontSize:13,color:COLORS.text,fontWeight:'600',marginBottom:10},
+  manualHint:{fontSize:11,color:COLORS.textMuted,lineHeight:16},
+  cloudRow:{flexDirection:'row',alignItems:'center',backgroundColor:COLORS.bg,borderRadius:12,padding:14,borderWidth:1,borderColor:COLORS.border},
+  cloudTxtWrap:{flex:1,marginLeft:10},
+  cloudTitle:{fontSize:14,fontWeight:'700',color:COLORS.text},
+  cloudSub:{fontSize:12,color:COLORS.textMuted,marginTop:2},
   ctaWrap:{borderRadius:14,overflow:'hidden'},
   cta:{padding:14,alignItems:'center',flexDirection:'row',justifyContent:'center'},
   ctaTxt:{color:'#fff',fontSize:15,fontWeight:'800'},
