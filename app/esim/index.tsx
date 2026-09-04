@@ -48,10 +48,13 @@ export default function AllEsimsScreen() {
     setLoading(false)
   }
 
-  function handleHide(orderId: string, label: string) {
+  function handleHide(orderId: string, label: string, isExpired: boolean) {
+    const activeWarning = isExpired
+      ? ''
+      : " Elle est encore active : vous ne pourrez plus la recharger ni suivre sa consommation depuis cette liste tant qu'elle reste masquée."
     Alert.alert(
       'Masquer cette eSIM ?',
-      `"${label}" ne sera plus affichée dans cette liste. Cette action n'affecte pas votre eSIM ni votre historique de commande — elle reste consultable par le support si besoin.`,
+      `"${label}" ne sera plus affichée dans cette liste.${activeWarning} Cette action n'affecte pas votre eSIM ni votre historique de commande — elle reste consultable par le support si besoin.`,
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -151,12 +154,10 @@ export default function AllEsimsScreen() {
                     <Ionicons name="headset-outline" size={14} color={COLORS.textMuted} />
                     <Text style={[s.actionTxt, { color: COLORS.textMuted }]}>Aide</Text>
                   </TouchableOpacity>
-                  {isExpired && (
-                    <TouchableOpacity style={s.actionBtn} onPress={() => handleHide(e.id, label)}>
-                      <Ionicons name="eye-off-outline" size={14} color="#B00020" />
-                      <Text style={[s.actionTxt, { color: '#B00020' }]}>Masquer</Text>
-                    </TouchableOpacity>
-                  )}
+                  <TouchableOpacity style={s.actionBtn} onPress={() => handleHide(e.id, label, isExpired)}>
+                    <Ionicons name="eye-off-outline" size={14} color="#B00020" />
+                    <Text style={[s.actionTxt, { color: '#B00020' }]}>Masquer</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             )

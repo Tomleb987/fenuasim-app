@@ -1,7 +1,7 @@
 // Onglet Assurance -- point d'entree permanent vers le parcours de
 // souscription reel (app/insurance/form.tsx). Reste une vraie destination
 // d'onglet (pas de bouton retour, comme Accueil/Explorer/Compte) ; le
-// formulaire a 5 etapes s'ouvre en ecran empile depuis ici.
+// formulaire a 6 etapes s'ouvre en ecran empile depuis ici.
 import React from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -48,7 +48,7 @@ export default function InsuranceTab() {
       <View style={s.ctaBar}>
         <TouchableOpacity style={s.ctaWrap} onPress={() => router.push('/insurance/form')}>
           <LinearGradient colors={['#D251D8', '#FD7F3C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.cta}>
-            <Text style={s.ctaTxt}>Souscrire une assurance</Text>
+            <Text style={s.ctaTxt}>Obtenir mon devis</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>

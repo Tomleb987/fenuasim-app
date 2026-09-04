@@ -7,10 +7,15 @@ import { COLORS } from '../../constants/theme'
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name']
 
+// Trait violet partout dans la navbar (actif comme inactif), juste plus
+// estompe au repos -- au lieu d'un gris neutre qui tranchait avec le reste
+// de la charte.
+const INACTIVE_VIOLET = 'rgba(210,81,216,0.55)'
+
 function TabIcon({ focused, name, activeName }: { focused: boolean; name: IoniconName; activeName: IoniconName }) {
   return (
     <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
-      <Ionicons name={focused ? activeName : name} size={25} color={focused ? COLORS.violet : COLORS.textMuted} />
+      <Ionicons name={focused ? activeName : name} size={25} color={focused ? COLORS.violet : INACTIVE_VIOLET} />
     </View>
   )
 }
@@ -43,7 +48,7 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarStyle: styles.tabBar,
         tabBarActiveTintColor: COLORS.violet,
-        tabBarInactiveTintColor: COLORS.textMuted,
+        tabBarInactiveTintColor: INACTIVE_VIOLET,
         tabBarLabelStyle: styles.tabLabel,
         tabBarButton: (props) => <BouncyTabButton {...props} />,
       }}
@@ -73,7 +78,7 @@ export default function TabsLayout() {
               </LinearGradient>
             ) : (
               <View style={styles.pillInactive}>
-                <Ionicons name="search-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 5 }} />
+                <Ionicons name="search-outline" size={14} color={INACTIVE_VIOLET} style={{ marginRight: 5 }} />
                 <Text style={styles.pillTextInactive}>eSIM</Text>
               </View>
             ),
@@ -142,7 +147,7 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     marginBottom: 4,
     borderWidth: 1.5,
-    borderColor: '#EDEDED',
+    borderColor: 'rgba(210,81,216,0.25)',
   },
   pillText: {
     color: '#fff',
@@ -150,7 +155,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   pillTextInactive: {
-    color: COLORS.textMuted,
+    color: INACTIVE_VIOLET,
     fontSize: 13,
     fontWeight: '800',
   },

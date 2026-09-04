@@ -23,8 +23,8 @@ import {
 } from '../../constants/insurance'
 import { useInsuranceQuote, InsuranceCompanion } from '../../hooks/useInsuranceQuote'
 
-const TOTAL_STEPS = 5
-const STEP_TITLES = ['Formule & voyage', 'Souscripteur', 'Voyageurs', 'Options', 'Récapitulatif']
+const TOTAL_STEPS = 6
+const STEP_TITLES = ['Formule', 'Voyage', 'Souscripteur', 'Voyageurs', 'Options', 'Récapitulatif']
 
 interface FormState {
   productType: InsuranceProductId
@@ -103,6 +103,7 @@ export default function InsuranceForm() {
   const { quoting, premium, fetchQuote, checkingOut, checkout, promoStatus, promoDiscount, checkPromoCode } = useInsuranceQuote()
   const [step, setStep] = useState(1)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [expandedProduct, setExpandedProduct] = useState<string | null>(null)
   const [residencyConfirmed, setResidencyConfirmed] = useState(false)
   const [form, setForm] = useState<FormState>({
     productType: 'ava_tourist_card',
@@ -160,10 +161,10 @@ export default function InsuranceForm() {
   }
 
   // Redevis silencieux a chaque changement d'option, une fois arrive a l'etape
-  // 4 -- reproduit exactement le comportement du site (debounce 500ms).
+  // Options -- reproduit exactement le comportement du site (debounce 500ms).
   const quoteDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
-    if (step < 4) return
+    if (step < 5) return
     if (quoteDebounce.current) clearTimeout(quoteDebounce.current)
     quoteDebounce.current = setTimeout(() => {
       fetchQuote(buildQuotePayload()).catch(() => {})
@@ -210,10 +211,10 @@ export default function InsuranceForm() {
   }
 
   async function goNext() {
-    if (step === 1 && !validateStep1()) return
-    if (step === 2 && !validateStep2()) return
-    if (step === 3 && !validateStep3()) return
-    if (step === 4) {
+    if (step === 2 && !validateStep1()) return
+    if (step === 3 && !validateStep2()) return
+    if (step === 4 && !validateStep3()) return
+    if (step === 5) {
       try { await fetchQuote(buildQuotePayload()) } catch { Alert.alert('Erreur', 'Impossible de calculer le tarif pour ces dates.'); return }
     }
     if (step < TOTAL_STEPS) setStep(step + 1)
@@ -292,26 +293,41 @@ export default function InsuranceForm() {
             <Text style={s.sectionLabel}>Choisissez votre formule</Text>
             {INSURANCE_PRODUCTS.map((p) => {
               const selected = form.productType === p.id
+              const expanded = expandedProduct === p.id
               return (
-                <TouchableOpacity key={p.id} style={[s.productCard, selected && s.productCardSelected]} onPress={() => update({ productType: p.id })}>
-                  <LinearGradient colors={p.colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.productBadge}>
-                    <Text style={s.productBadgeTxt}>{p.tagline}</Text>
-                  </LinearGradient>
+                <TouchableOpacity key={p.id} style={[s.productCard, selected && s.productCardSelected]} onPress={() => update({ productType: p.id })} activeOpacity={0.85}>
+                  <View style={s.productCardHead}>
+                    <LinearGradient colors={p.colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.productBadge}>
+                      <Text style={s.productBadgeTxt}>{p.tagline}</Text>
+                    </LinearGradient>
+                    <TouchableOpacity style={s.expandBtn} onPress={() => setExpandedProduct(expanded ? null : p.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <Ionicons name={expanded ? 'remove' : 'add'} size={16} color={COLORS.violet} />
+                    </TouchableOpacity>
+                  </View>
                   <Text style={s.productTitle}>{p.label}</Text>
-                  <Text style={s.productDesc}>{p.description}</Text>
-                  {p.highlights.map((h) => (
-                    <View key={h} style={s.highlightRow}>
-                      <Ionicons name="checkmark-circle" size={14} color={selected ? COLORS.violet : '#ccc'} />
-                      <Text style={s.highlightTxt}>{h}</Text>
-                    </View>
-                  ))}
+                  {expanded && (
+                    <>
+                      <Text style={s.productDesc}>{p.description}</Text>
+                      {p.highlights.map((h) => (
+                        <View key={h} style={s.highlightRow}>
+                          <Ionicons name="checkmark-circle" size={14} color={selected ? COLORS.violet : '#ccc'} />
+                          <Text style={s.highlightTxt}>{h}</Text>
+                        </View>
+                      ))}
+                    </>
+                  )}
                 </TouchableOpacity>
               )
             })}
+          </>
+        )}
 
+        {step === 2 && (
+          <>
+            <Text style={s.sectionLabel}>Votre voyage</Text>
             {product.requiresTrip && (
               <>
-                <Text style={s.sectionLabel}>Destination</Text>
+                <Text style={s.fieldLabel}>Destination</Text>
                 <View style={s.chipRow}>
                   {INSURANCE_DESTINATIONS.map((d) => (
                     <TouchableOpacity key={d.value} style={[s.chip, form.destination === d.value && s.chipSelected]} onPress={() => update({ destination: d.value })}>
@@ -323,7 +339,7 @@ export default function InsuranceForm() {
               </>
             )}
 
-            <Text style={s.sectionLabel}>Dates</Text>
+            <Text style={s.fieldLabel}>Dates</Text>
             <View style={s.row2}>
               <View style={{ flex: 1 }}>
                 <Text style={s.fieldLabel}>Départ</Text>
@@ -346,7 +362,7 @@ export default function InsuranceForm() {
           </>
         )}
 
-        {step === 2 && (
+        {step === 3 && (
           <>
             <Text style={s.sectionLabel}>Identité du souscripteur</Text>
             <View style={s.row2}>
@@ -385,7 +401,7 @@ export default function InsuranceForm() {
           </>
         )}
 
-        {step === 3 && (
+        {step === 4 && (
           <>
             <Text style={s.sectionLabel}>Voyageurs accompagnants</Text>
             <Text style={s.hint}>Vous voyagez seul ? Passez à l'étape suivante. Sinon, ajoutez vos accompagnants.</Text>
@@ -418,7 +434,7 @@ export default function InsuranceForm() {
           </>
         )}
 
-        {step === 4 && (
+        {step === 5 && (
           <>
             <Text style={s.sectionLabel}>Options de votre contrat</Text>
             <Text style={s.hint}>Personnalisez votre couverture selon vos besoins.</Text>
@@ -501,7 +517,7 @@ export default function InsuranceForm() {
           </>
         )}
 
-        {step === 5 && (
+        {step === 6 && (
           <>
             <Text style={s.sectionLabel}>Récapitulatif</Text>
             <View style={s.recapCard}>
@@ -586,6 +602,8 @@ const s = StyleSheet.create({
   row2: { flexDirection: 'row', gap: 10 },
   productCard: { backgroundColor: '#fff', borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 1.5, borderColor: 'transparent', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
   productCardSelected: { borderColor: COLORS.violet },
+  productCardHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  expandBtn: { width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(210,81,216,0.1)', justifyContent: 'center', alignItems: 'center' },
   productBadge: { alignSelf: 'flex-start', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, marginBottom: 8 },
   productBadgeTxt: { color: '#fff', fontSize: 11, fontWeight: '700' },
   productTitle: { fontSize: 16, fontWeight: '800', color: COLORS.text },

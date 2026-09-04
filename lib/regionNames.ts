@@ -1,7 +1,7 @@
 // Extrait de app/(tabs)/explore.tsx pour être partage avec hooks/usePackageInfo.ts
 // sans dupliquer la table de traduction. Comportement inchange.
 export const REGION_TRANSLATIONS: Record<string, string> = {
-  "Discover Global":"Monde","Asia":"Asie","Europe":"Europe","Japan":"Japon",
+  "Discover Global":"Monde","Global":"Monde","Asia":"Asie","Europe":"Europe","Japan":"Japon",
   "Japon":"Japon","Canary Islands":"Iles Canaries","South Korea":"Coree du Sud",
   "Hong Kong":"Hong Kong","United States":"Etats-Unis","Australia":"Australie",
   "New Zealand":"Nouvelle-Zelande","Mexico":"Mexique","Fiji":"Fidji",
