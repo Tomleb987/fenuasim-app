@@ -63,8 +63,18 @@ export default function PaymentSuccess() {
           .maybeSingle()
 
         if (row?.status === 'completed') {
-          // id = identifiant de commande Airalo, attendu par l'ecran d'attribution.
-          setOrder({ ...row, id: row.airalo_order_id })
+          // L'ecran d'attribution transmet cet id a la RPC app_assign_esim, dont
+          // le parametre p_airalo_order_id est de type uuid : il faut donc l'uuid
+          // de la ligne airalo_orders, PAS l'identifiant Airalo numerique
+          // (row.airalo_order_id, ex: "2452452"), qui ferait echouer la
+          // conversion et donc toute l'attribution.
+          const { data: airaloRow } = await supabase
+            .from('airalo_orders')
+            .select('id')
+            .eq('order_id', row.airalo_order_id)
+            .maybeSingle()
+
+          setOrder({ ...row, id: airaloRow?.id ?? null })
           setLoading(false)
           return
         }
@@ -165,7 +175,7 @@ export default function PaymentSuccess() {
         {order?.apple_installation_url && (
           <View style={s.installBox}>
             <Text style={s.installTitle}>Installation directe</Text>
-            <Text style={s.installSub}>Utilisez ce code pour vous connecter sur esims.cloud</Text>
+            <Text style={s.installSub}>Installez votre eSIM directement sur cet appareil. Ce code identifie votre ligne.</Text>
             <View style={s.codeWrap}>
               <Text style={s.codeLabel}>Code d'acces</Text>
               <View style={s.codeRow}>
