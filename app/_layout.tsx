@@ -2,13 +2,26 @@ import React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { Stack, useRouter, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
-import { View, Animated, Image, Easing, Dimensions } from 'react-native'
+import { View, Animated, Easing, Dimensions } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
+import * as NativeSplash from 'expo-splash-screen'
 import { supabase } from '../lib/supabase'
 import { Session } from '@supabase/supabase-js'
 import { COLORS } from '../constants/theme'
 import { CurrencyProvider, useCurrency } from '../lib/currency'
 import CurrencyPicker from '../components/CurrencyPicker'
+
+// Le splash natif (app.json) n'affiche plus qu'un aplat violet #D251D8 : son
+// image est un PNG entierement transparent (assets/splash-blank.png), ce qui
+// evite a la fois le gros logo plein ecran de l'ancienne config et l'icone que
+// Android 12+ affiche par defaut quand aucune image n'est fournie.
+// Le seul logo du demarrage est donc celui du splash JS anime ci-dessous, qui
+// part du meme aplat violet puis fond son degrade par dessus : la bascule
+// natif -> JS est invisible.
+// On empeche la fermeture automatique du splash natif jusqu'au premier rendu
+// du splash JS (hideAsync() dans <SplashScreen />), sinon un blanc apparait
+// entre les deux.
+NativeSplash.preventAutoHideAsync().catch(() => {})
 
 const BAR_HEIGHTS = [10, 15, 20, 25]
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window')
@@ -61,8 +74,8 @@ function PulseRings() {
           Animated.parallel([
             Animated.timing(ring.scale, { toValue: 1.6, duration: 1800, easing: Easing.out(Easing.ease), useNativeDriver: true }),
             Animated.sequence([
-              Animated.timing(ring.opacity, { toValue: 0.55, duration: 260, useNativeDriver: true }),
-              Animated.timing(ring.opacity, { toValue: 0, duration: 1540, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+              Animated.timing(ring.opacity, { toValue: 0.55, duration: 140, useNativeDriver: true }),
+              Animated.timing(ring.opacity, { toValue: 0, duration: 1660, easing: Easing.out(Easing.ease), useNativeDriver: true }),
             ]),
           ]),
           Animated.delay((2 - i) * 550 + 200),
@@ -170,10 +183,12 @@ function DiagonalStreak() {
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.delay(500),
-        Animated.timing(sweep, { toValue: 1, duration: 2000, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }),
+        // 1400 ms : la passe complete tient dans la duree minimum du splash
+        // (1800 ms), le reflet n'est jamais coupe en plein milieu.
+        Animated.timing(sweep, { toValue: 1, duration: 1400, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }),
         Animated.delay(1100),
         Animated.timing(sweep, { toValue: 0, duration: 0, useNativeDriver: true }),
+        Animated.delay(500),
       ])
     )
     loop.start()
@@ -204,9 +219,25 @@ function DiagonalStreak() {
   )
 }
 
+const SPLASH_BASE_COLOR = '#D251D8'
+
 function SplashScreen({ exiting, onExited }: { exiting: boolean; onExited: () => void }) {
   const exitOpacity = useRef(new Animated.Value(1)).current
   const exitScale = useRef(new Animated.Value(1)).current
+  // Entree : le degrade et le logo apparaissent par dessus l'aplat violet du
+  // splash natif, plutot que de le remplacer d'un coup.
+  const enterOpacity = useRef(new Animated.Value(0)).current
+  const logoScale = useRef(new Animated.Value(0.92)).current
+
+  // Premier rendu de ce composant peint : le splash JS est maintenant a
+  // l'ecran, on peut retirer le splash natif sans jamais laisser un blanc.
+  useEffect(() => {
+    NativeSplash.hideAsync().catch(() => {})
+    Animated.parallel([
+      Animated.timing(enterOpacity, { toValue: 1, duration: 340, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.timing(logoScale, { toValue: 1, duration: 520, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+    ]).start()
+  }, [])
 
   useEffect(() => {
     if (!exiting) return
@@ -219,29 +250,38 @@ function SplashScreen({ exiting, onExited }: { exiting: boolean; onExited: () =>
   }, [exiting])
 
   return (
-    <Animated.View style={{ flex: 1, opacity: exitOpacity, transform: [{ scale: exitScale }] }}>
-      <LinearGradient
-        colors={['#D251D8', '#FD7F3C']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
-      >
-        <StatusBar style="light" />
-        <AmbientBlobs />
-        <DiagonalStreak />
+    <Animated.View
+      style={{
+        flex: 1,
+        backgroundColor: SPLASH_BASE_COLOR,
+        opacity: exitOpacity,
+        transform: [{ scale: exitScale }],
+      }}
+    >
+      <StatusBar style="light" />
+      <Animated.View style={{ flex: 1, opacity: enterOpacity }}>
+        <LinearGradient
+          colors={[SPLASH_BASE_COLOR, '#FD7F3C']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+        >
+          <AmbientBlobs />
+          <DiagonalStreak />
 
-        <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-          <PulseRings />
-          <Image
-            source={require('../assets/images/logo-white.png')}
-            style={{ width: 260, height: 100, resizeMode: 'contain', borderRadius: 16 }}
-          />
-        </View>
+          <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+            <PulseRings />
+            <Animated.Image
+              source={require('../assets/images/logo-white.png')}
+              style={{ width: 260, height: 100, resizeMode: 'contain', transform: [{ scale: logoScale }] }}
+            />
+          </View>
 
-        <View style={{ position: 'absolute', bottom: 64 }}>
-          <SignalBars color="rgba(255,255,255,0.75)" />
-        </View>
-      </LinearGradient>
+          <View style={{ position: 'absolute', bottom: 64 }}>
+            <SignalBars color="rgba(255,255,255,0.75)" />
+          </View>
+        </LinearGradient>
+      </Animated.View>
     </Animated.View>
   )
 }
@@ -271,9 +311,12 @@ function RootLayoutInner() {
   const segments = useSegments()
 
   useEffect(() => {
-    // Duree minimum d'affichage du splash (hors animation de sortie) : la
-    // verification de session peut la depasser si elle est plus lente.
-    const splashTimer = setTimeout(() => setMinTimeDone(true), 4000)
+    // Duree minimum d'affichage du splash (hors animation de sortie) : assez
+    // long pour laisser l'entree du logo se terminer (520 ms) et un cycle
+    // d'animation se voir, assez court pour ne pas faire attendre alors que
+    // getSession() repond en general en moins d'une seconde. La verification
+    // de session peut depasser cette duree si elle est plus lente.
+    const splashTimer = setTimeout(() => setMinTimeDone(true), 1800)
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)

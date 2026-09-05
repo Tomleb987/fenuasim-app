@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image, Platform, Linking } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image, Platform, Linking, ScrollView } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -28,6 +28,7 @@ export default function PaymentSuccess() {
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [showTechInfo, setShowTechInfo] = useState(false)
+  const [showQr, setShowQr] = useState(false)
   const cancelled = useRef(false)
 
   useEffect(() => {
@@ -146,7 +147,7 @@ export default function PaymentSuccess() {
 
   return (
     <SafeAreaView style={s.safe}>
-      <View style={s.wrap}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={s.wrap} showsVerticalScrollIndicator={false}>
         <LinearGradient colors={['#D251D8','#FD7F3C']} style={s.circle}>
           <Ionicons name="checkmark" size={36} color="#fff" />
         </LinearGradient>
@@ -187,14 +188,21 @@ export default function PaymentSuccess() {
 
             {!!order?.qr_code_url && (
               <>
-                <Text style={s.installSub}>Scannez ce QR code depuis un autre appareil :</Text>
-                <View style={s.qrWrap}>
-                  <Image source={{ uri: order.qr_code_url }} style={s.qrImg} resizeMode="contain" />
-                </View>
+                <TouchableOpacity style={s.qrToggle} onPress={() => setShowQr((v) => !v)}>
+                  <Ionicons name="qr-code-outline" size={18} color={COLORS.violet} />
+                  <Text style={s.qrToggleTxt}>{showQr ? 'Masquer mon QR code' : 'Voir mon QR code'}</Text>
+                  <Ionicons name={showQr ? 'chevron-up' : 'chevron-down'} size={16} color={COLORS.textMuted} />
+                </TouchableOpacity>
+                {showQr && (
+                  <View style={s.qrWrap}>
+                    <Text style={s.installSub}>Scannez ce QR code depuis un autre appareil :</Text>
+                    <Image source={{ uri: order.qr_code_url }} style={s.qrImg} resizeMode="contain" />
+                  </View>
+                )}
               </>
             )}
 
-            {(!!order?.lpa || !!order?.matching_id) && (
+            {Platform.OS === 'android' && (!!order?.lpa || !!order?.matching_id) && (
               <View style={s.manualBox}>
                 {/* Chemin Android : le QR est affiche sur l'appareil meme ou l'eSIM
                     doit etre installee, donc inscannable. La saisie manuelle de
@@ -267,7 +275,7 @@ export default function PaymentSuccess() {
         <TouchableOpacity style={s.ghost} onPress={() => router.push('/(tabs)')}>
           <Text style={s.ghostTxt}>{order?.sim_iccid ? 'Plus tard' : "Retour a l'accueil"}</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   )
 }
@@ -280,7 +288,7 @@ const s = StyleSheet.create({
   errorSub:{fontSize:14,color:'#888',textAlign:'center'},
   retryBtn:{backgroundColor:COLORS.violet,borderRadius:12,paddingHorizontal:24,paddingVertical:12,marginTop:8},
   retryTxt:{color:'#fff',fontWeight:'700',fontSize:14},
-  wrap:{flex:1,padding:24,paddingTop:40},
+  wrap:{flexGrow:1,padding:24,paddingTop:40,paddingBottom:32},
   circle:{width:72,height:72,borderRadius:36,justifyContent:'center',alignItems:'center',marginBottom:16,alignSelf:'center'},
   title:{fontSize:22,fontWeight:'800',color:COLORS.text,textAlign:'center'},
   sub:{fontSize:14,color:'#888',marginTop:6,textAlign:'center',marginBottom:20},
@@ -293,8 +301,10 @@ const s = StyleSheet.create({
   techDetail:{fontSize:12,color:'#aaa',textAlign:'center',marginTop:2},
   installBox:{backgroundColor:'#fff',borderRadius:16,padding:16,marginBottom:16,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
   installTitle:{fontSize:15,fontWeight:'700',color:COLORS.text,marginBottom:6},
-  installSub:{fontSize:13,color:'#888',lineHeight:20,marginBottom:12,marginTop:16},
-  qrWrap:{alignItems:'center',backgroundColor:'#fff',borderRadius:12,padding:12,borderWidth:1,borderColor:COLORS.border,marginBottom:16},
+  installSub:{fontSize:13,color:'#888',lineHeight:20,marginBottom:12},
+  qrToggle:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,paddingVertical:12,marginTop:16,borderWidth:1.5,borderColor:COLORS.violet,borderRadius:12},
+  qrToggleTxt:{fontSize:13,fontWeight:'700',color:COLORS.violet},
+  qrWrap:{alignItems:'center',backgroundColor:'#fff',borderRadius:12,padding:12,borderWidth:1,borderColor:COLORS.border,marginTop:12,marginBottom:4},
   qrImg:{width:190,height:190},
   manualBox:{backgroundColor:COLORS.bg,borderRadius:12,padding:14,borderWidth:1,borderColor:COLORS.border,marginBottom:16},
   manualTitle:{fontSize:13,fontWeight:'800',color:COLORS.text,marginBottom:10},

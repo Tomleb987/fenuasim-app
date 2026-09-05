@@ -8,15 +8,10 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "scheme": "fenuasim",
-    "splash": {
-      "image": "./assets/images/logo-white.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#D251D8"
-    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.fenuasim.app",
-      "buildNumber": "8",
+      "buildNumber": "10",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -35,7 +30,16 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#D251D8",
+          "image": "./assets/splash-blank.png",
+          "imageWidth": 120,
+          "resizeMode": "contain"
+        }
+      ]
     ],
     "extra": {
       "router": {},

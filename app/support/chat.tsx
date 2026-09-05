@@ -37,6 +37,82 @@ function parseAssistantStream(raw: string): string {
   return text
 }
 
+// Le backend fenuasim.com genere parfois des liens en HTML brut (<a href="..."
+// target="_blank" style="...">texte</a>), pense pour le widget web qui les
+// injecte via dangerouslySetInnerHTML. React Native ne sait pas interpreter du
+// HTML : sans ce parsing, la balise entiere (attributs compris) s'affichait
+// telle quelle dans la bulle. On extrait les liens (HTML, markdown, ou URL
+// nue) en segments texte/lien pour les rendre comme du <Text onPress=...>.
+type MessageSegment = { text: string; url?: string }
+
+function parseMessageSegments(raw: string): MessageSegment[] {
+  const withAnchors: MessageSegment[] = []
+  const anchorRegex = /<a\s+[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+  while ((match = anchorRegex.exec(raw))) {
+    if (match.index > lastIndex) withAnchors.push({ text: raw.slice(lastIndex, match.index) })
+    withAnchors.push({ text: match[2].replace(/<[^>]+>/g, ''), url: match[1] })
+    lastIndex = match.index + match[0].length
+  }
+  if (lastIndex < raw.length) withAnchors.push({ text: raw.slice(lastIndex) })
+
+  const final: MessageSegment[] = []
+  for (const seg of withAnchors) {
+    if (seg.url) {
+      final.push(seg)
+      continue
+    }
+    // Balises restantes (gras, <br>, etc.) : on garde le texte, on jette le markup.
+    const cleaned = seg.text.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '')
+
+    let cursor = 0
+    const mdRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g
+    let mdMatch: RegExpExecArray | null
+    const afterMd: MessageSegment[] = []
+    while ((mdMatch = mdRegex.exec(cleaned))) {
+      if (mdMatch.index > cursor) afterMd.push({ text: cleaned.slice(cursor, mdMatch.index) })
+      afterMd.push({ text: mdMatch[1], url: mdMatch[2] })
+      cursor = mdMatch.index + mdMatch[0].length
+    }
+    afterMd.push({ text: cleaned.slice(cursor) })
+
+    for (const part of afterMd) {
+      if (part.url) {
+        final.push(part)
+        continue
+      }
+      let urlCursor = 0
+      const urlRegex = /(https?:\/\/[^\s]+)/g
+      let urlMatch: RegExpExecArray | null
+      while ((urlMatch = urlRegex.exec(part.text))) {
+        if (urlMatch.index > urlCursor) final.push({ text: part.text.slice(urlCursor, urlMatch.index) })
+        final.push({ text: urlMatch[1], url: urlMatch[1] })
+        urlCursor = urlMatch.index + urlMatch[0].length
+      }
+      if (urlCursor < part.text.length) final.push({ text: part.text.slice(urlCursor) })
+    }
+  }
+  return final.filter((s) => s.text !== '')
+}
+
+function FormattedMessage({ content, textStyle }: { content: string; textStyle: any }) {
+  const segments = parseMessageSegments(content)
+  return (
+    <Text style={textStyle}>
+      {segments.map((seg, i) =>
+        seg.url ? (
+          <Text key={i} style={s.link} onPress={() => Linking.openURL(seg.url!)}>
+            {seg.text}
+          </Text>
+        ) : (
+          <Text key={i}>{seg.text}</Text>
+        )
+      )}
+    </Text>
+  )
+}
+
 function TypingDots() {
   const dots = useRef([0, 1, 2].map(() => new Animated.Value(0))).current
 
@@ -141,7 +217,11 @@ export default function SupportChatScreen() {
 
           {messages.map((m, i) => (
             <View key={i} style={[s.bubble, m.role === 'user' ? s.bubbleUser : s.bubbleAssistant]}>
-              <Text style={m.role === 'user' ? s.bubbleTxtUser : s.bubbleTxtAssistant}>{m.content}</Text>
+              {m.role === 'user' ? (
+                <Text style={s.bubbleTxtUser}>{m.content}</Text>
+              ) : (
+                <FormattedMessage content={m.content} textStyle={s.bubbleTxtAssistant} />
+              )}
             </View>
           ))}
 
@@ -197,6 +277,7 @@ const s = StyleSheet.create({
   bubbleUser: { backgroundColor: COLORS.violet, alignSelf: 'flex-end', borderBottomRightRadius: 4 },
   bubbleTxtAssistant: { fontSize: 14, color: COLORS.text, lineHeight: 20 },
   bubbleTxtUser: { fontSize: 14, color: '#fff', lineHeight: 20 },
+  link: { color: COLORS.violet, fontWeight: '700', textDecorationLine: 'underline' },
   typingRow: { flexDirection: 'row', gap: 4, paddingVertical: 4, paddingHorizontal: 2 },
   errorBox: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, backgroundColor: '#FDECEA', borderRadius: 12, padding: 12, marginTop: 4 },
   errorTxt: { fontSize: 12, color: '#B00020', flex: 1 },

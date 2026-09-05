@@ -35,156 +35,45 @@ iPhone physique** (point 1 de leur liste).
 
 > Texte en anglais, structuré point par point comme Apple le demande. À copier tel quel.
 
+**Version courte (< 4000 caractères, sous la limite du champ Notes / Resolution Center — la version longue ci-dessus a été refusée pour dépassement) :**
+
 ```text
 Hello,
 
-Thank you for the review. Please find below the requested information. The same
-text has been added to the Notes field in App Review Information.
+Thank you for the review. Requested information below (also added to App Review Information > Notes).
 
---------------------------------------------------------------------
 1) SCREEN RECORDING
---------------------------------------------------------------------
-A screen recording captured on a physical iPhone running the latest iOS is
-attached to this message. It starts from app launch and shows, in order:
-account registration, login, browsing and purchasing an eSIM data plan
-(paid feature), retrieving the eSIM QR code, the travel insurance flow, the
-AI support assistant, and the in-app account deletion flow.
+Attached: a recording on a physical iPhone (latest iOS), starting at launch, showing registration, login, browsing and purchasing an eSIM (paid feature), the eSIM QR code, top-up, the travel insurance flow, the AI support assistant, and in-app account deletion. No user-generated content, so no moderation tools needed.
 
-The app contains NO user-generated content, so no content reporting or
-blocking mechanism is required or present.
+2) PURPOSE AND AUDIENCE
+FenuaSIM sells prepaid travel eSIM data plans and travel insurance, mainly for residents of French Polynesia travelling abroad and travellers visiting French Polynesia. It solves high roaming costs by letting users buy and install an eSIM remotely in a few taps, with transparent XPF/EUR pricing, multi-eSIM/traveller management, top-up, and optional travel insurance. Audience: adult travellers (4+), French language.
 
---------------------------------------------------------------------
-2) PURPOSE AND TARGET AUDIENCE
---------------------------------------------------------------------
-FenuaSIM sells prepaid travel eSIM mobile data plans and travel insurance,
-primarily for residents of French Polynesia travelling abroad and for
-travellers visiting French Polynesia.
-
-Problem solved: travellers arriving in or leaving French Polynesia face very
-high roaming charges and often cannot easily obtain a local SIM card. FenuaSIM
-lets them buy a data plan in a few taps and install it remotely as an eSIM,
-before departure, with no physical SIM card and no store visit.
-
-Value provided: transparent pricing displayed in the local currency (XPF) or
-in EUR, instant delivery of the eSIM QR code, the ability to top up an
-existing eSIM, to manage several eSIMs for several travellers or devices under
-one account, and optional travel insurance.
-
-Target audience: adult travellers (rating 4+, no age-sensitive content). The
-app is available in French, the language of our market.
-
---------------------------------------------------------------------
-3) SETUP AND ACCESS INSTRUCTIONS
---------------------------------------------------------------------
-No special setup, hardware, or sample file is required. The app works on a
-standard iPhone with an internet connection.
-
-Demo account (already entered in App Review Information):
-  Email:    fenuasim.qa.applereview@example.com
+3) SETUP AND ACCESS
+No special setup needed; standard iPhone with internet.
+Demo account (already in App Review Information):
+  Email: fenuasim.qa.applereview@example.com
   Password: FenuaReview2026!
+This account has an existing eSIM order, so the full signed-in experience is visible immediately. Single account type, no admin role.
+Main tabs after sign-in: Home (active eSIMs, QR codes), Explore (browse/buy plans), Insurance (quote/subscribe), Account (profile, history, support, "Supprimer mon compte").
+Account deletion: Account > "Supprimer mon compte" > type SUPPRIMER > confirm. Self-service, deletes server-side data and signs out. No contact required.
 
-This account has an existing eSIM order so you can immediately see the full
-signed-in experience (eSIM list, QR code, top-up, order history). There is
-only one account type in the app; there is no admin or business role.
+4) EXTERNAL SERVICES
+Supabase (backend: auth, database, functions) - Stripe (payment, Checkout, no card data stored by us) - Airalo (wholesale eSIM provider; resold under a signed agreement) - insurance chain: FenuaSIM is an appointed agent of ANSET Assurances, a licensed insurance intermediary, distributing AVA's travel insurance products - fenuasim.com (our backend for orders and the AI assistant) - AI assistant only answers support questions about our own service, no open-ended content - Expo/EAS (build tooling). No ads, no analytics/tracking SDK, no location/contacts/photos/health data access.
 
-How to reach the main features after signing in:
-  - Home tab: your active eSIMs, their remaining data and their QR code.
-  - Explore tab: browse destinations and data plans, then purchase.
-  - Insurance tab: travel insurance quote and subscription.
-  - Account tab: profile, order history, travellers/devices, support, and
-    "Supprimer mon compte" (Delete my account) at the bottom of the screen.
-
-Account deletion: Account tab -> "Supprimer mon compte" -> confirmation screen
--> type the word "SUPPRIMER" -> the account and its personal data are deleted
-server-side and the user is signed out. This is fully self-service inside the
-app and requires no email or phone contact.
-
---------------------------------------------------------------------
-4) EXTERNAL SERVICES USED
---------------------------------------------------------------------
-  - Supabase (supabase.com): user authentication, database, and serverless
-    functions. This is our own backend.
-  - Stripe: payment processing (Stripe Checkout). No card data is ever stored
-    by the app.
-  - Airalo: wholesale eSIM provider. FenuaSIM is a reseller/distributor of
-    Airalo data plans; Airalo provisions the eSIM profile and the QR code.
-  - Travel insurance distribution chain: FenuaSIM acts as an appointed agent
-    of ANSET Assurances, a licensed insurance intermediary, which distributes
-    the travel insurance products of AVA. AVA is the product provider; ANSET
-    is our contractual counterparty. FenuaSIM neither underwrites nor carries
-    any insurance risk.
-  - fenuasim.com: our own website, which hosts two endpoints the app calls —
-    order creation and the AI support assistant.
-  - AI service: the in-app support assistant is an AI chatbot answering
-    questions about eSIM compatibility, installation and orders. It runs on
-    our own fenuasim.com backend. It only answers customer-support questions
-    about our own service and does not generate open-ended or user-published
-    content.
-  - Expo / EAS (expo.dev): the framework used to build the app.
-
-There is no advertising SDK, no analytics SDK, no tracking, and the app never
-requests location, contacts, photos, or health data.
-
---------------------------------------------------------------------
 5) REGIONAL DIFFERENCES
---------------------------------------------------------------------
-The app's features are the same in every region, with two intentional,
-clearly labelled differences:
+Same features everywhere, two labelled exceptions:
+a) eSIM catalogue is identical worldwide; prices shown in XPF by default (switchable to EUR), charge always in EUR.
+b) Travel insurance is restricted to French Polynesia residents (territory our mandate covers), a legal/contractual restriction stated on-screen with an explicit residency confirmation, not a geo-block - the screen stays visible everywhere for transparency.
+All other features behave identically everywhere.
 
-  a) eSIM data plans: the catalogue of destinations is identical worldwide.
-     Prices are displayed in XPF (French Polynesian franc) by default and can
-     be switched to EUR by the user; the actual charge is always in EUR.
-
-  b) Travel insurance: this product is contractually restricted to residents
-     of French Polynesia, because that is the territory covered by the
-     insurance products we are mandated to distribute. This restriction is stated
-     on the insurance screen and the user must explicitly confirm French
-     Polynesian residency before subscribing. The restriction is a legal and
-     contractual one from the insurer, not a technical geo-block: the screen
-     remains visible and readable everywhere so that the limitation is
-     transparent to every user.
-
-All other features - account, eSIM purchase, top-up, QR code, support - behave
-identically in all regions.
-
---------------------------------------------------------------------
 6) REGULATED INDUSTRY / THIRD-PARTY MATERIAL
---------------------------------------------------------------------
-FenuaSIM does not operate as a mobile network operator and is not an
-insurer. In both regulated areas we act strictly as an authorised
-intermediary, under written agreements:
+FenuaSIM is not a network operator and not an insurer; it acts strictly as an authorised intermediary under written agreements:
+- eSIM: profiles are provisioned by Airalo (licensed provider); FenuaSIM distributes under a signed reseller agreement and operates no network.
+- Insurance: FenuaSIM is an appointed agent (mandataire) of ANSET Assurances, a licensed intermediary, under a written mandate; ANSET distributes AVA's products. The contract is between customer and insurer through this chain - FenuaSIM does not underwrite, carry risk, or issue certificates. AVA is named only to identify the distributed product range.
+Our signed Airalo agreement and ANSET mandate can be provided on request. Brand names, plans, prices and content shown come from these partners' official catalogues under the above agreements.
 
-  - Mobile data / eSIM: the eSIM profiles are provisioned by Airalo, a
-    licensed eSIM provider. FenuaSIM distributes Airalo data plans under a
-    signed reseller agreement. FenuaSIM does not own or operate any mobile
-    network and does not issue SIM profiles itself.
-
-  - Travel insurance: FenuaSIM is an appointed agent (mandataire) of ANSET
-    Assurances, a licensed insurance intermediary, under a written mandate.
-    ANSET distributes the travel insurance products of AVA. The insurance
-    contract is therefore concluded between the customer and the insurer
-    through this chain; FenuaSIM does not underwrite policies, does not carry
-    any insurance risk, and does not issue insurance certificates itself. The
-    certificate delivered in the app is the one produced by the insurer.
-    The AVA name appears in the app only to identify the product range being
-    distributed, which our mandate authorises us to distribute.
-
-We can provide, immediately on request:
-  - our signed reseller agreement with Airalo;
-  - our written mandate from ANSET Assurances.
-
-All brand names, plan names, prices and product content shown in the app come
-from these partners' official catalogues, which we are authorised to
-distribute under the agreements above.
-
---------------------------------------------------------------------
 NOTE ON PAYMENTS
---------------------------------------------------------------------
-All purchases in the app are real-world telecom services (mobile data
-connectivity delivered over physical mobile networks) and insurance contracts,
-both consumed outside the app. Under Guideline 3.1.3(e) these are not digital
-content or virtual goods, so payment is processed via Stripe, consistent with
-comparable eSIM apps on the App Store. No In-App Purchase products are used.
+All purchases are real-world telecom connectivity and insurance contracts consumed outside the app. Under Guideline 3.1.3(e) these are not digital content/virtual goods, so Stripe is used, consistent with comparable eSIM apps. No In-App Purchase products used.
 
 Thank you,
 The FenuaSIM team
