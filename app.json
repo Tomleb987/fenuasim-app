@@ -22,7 +22,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.fenuasim.app",
-      "versionCode": 5,
+      "versionCode": 6,
       "permissions": [
         "android.permission.INTERNET"
       ],
