@@ -121,3 +121,32 @@ _FenuaSIM — contact@fenuasim.com — https://www.fenuasim.com_
    l'extérieur)
 2. Collez-la dans Play Console → Sécurité des données → **URL de suppression de compte**
 3. Le lien apparaîtra publiquement sur votre fiche Play Store
+
+---
+
+## État après publication (2026-09-06)
+
+La page **existe** : `https://www.fenuasim.com/suppression-compte` répond HTTP 200 en accès
+public, sur `www` comme sur le domaine nu. Elle nomme FenuaSIM, décrit une procédure par
+e-mail, et liste des données supprimées et conservées. **Elle devrait satisfaire Google en
+l'état.**
+
+Le texte publié differe de celui propose ci-dessus. Trois ecarts subsistent, par ordre de
+risque decroissant :
+
+1. **Duree de conservation non chiffree.** La page indique « la duree legale imposee par les
+   obligations fiscales et comptables applicables en France », sans nombre. Google demande
+   explicitement de preciser « toute duree de conservation supplementaire » — c'est le point
+   le plus susceptible d'etre releve. Remplacer par : « conservees **10 ans** au titre des
+   obligations comptables et fiscales (Code de commerce, art. L123-22) », apres confirmation
+   que cette duree correspond bien a la politique reelle.
+
+2. **La procedure dans l'application n'est pas decrite.** La page ne mentionne que la voie
+   e-mail, alors que l'app expose un vrai bouton de suppression (`app/account/delete.tsx`) —
+   c'est celui que le testeur Google utilisera. Ajouter le bloc « Depuis l'application » en
+   quatre etapes (onglet Compte -> Supprimer mon compte -> confirmer).
+
+3. **Liste des donnees supprimees incomplete.** Manquent trois elements reellement effaces
+   en cascade : les fiches voyageurs, les appareils enregistres, et les attributions d'eSIM a
+   un voyageur ou un appareil. La page mentionne par ailleurs « l'historique de navigation
+   lie a votre compte », que l'application ne collecte pas — donnee annoncee mais inexistante.
