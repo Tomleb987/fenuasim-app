@@ -289,7 +289,7 @@ Deux options, à trancher avant de soumettre :
 Ne **pas** publier directement en production.
 
 1. Play Console → **Test** → **Test interne** → créer une version
-2. Déposer le `.aab` (versionCode 5, à télécharger depuis EAS)
+2. Déposer le `.aab` (versionCode 7, à télécharger depuis EAS — toujours le plus récent, jamais un `.aab` antérieur)
 3. Compléter « Contenu de l'application » (les §4 à §9 de ce document)
 4. Compléter la fiche Store (les §1 à §3 et §10)
 5. Ajouter les testeurs internes, installer, vérifier sur un vrai appareil
