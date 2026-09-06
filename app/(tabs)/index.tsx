@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Animated, Easing } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
-import { useRouter } from 'expo-router'
+import { useRouter, useFocusEffect } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { COLORS } from '../../constants/theme'
 import { useDataUsage } from '../../hooks/useDataUsage'
@@ -77,7 +77,17 @@ export default function HomeScreen() {
   const { byIccid: getAssignment } = useEsimAssignments()
   const { fetchPackages, getPackageDisplay } = usePackageInfo()
 
-  useEffect(() => { loadData(); loadRegions() }, [])
+  useEffect(() => { loadRegions() }, [])
+
+  // L'accueil est un onglet : il reste monte en permanence. Un useEffect avec
+  // [] ne se rejouait donc jamais, et le retour depuis la recharge
+  // (router.replace('/(tabs)')) ramenait sur des donnees figees : le solde
+  // affiche restait celui d'avant l'achat, et l'utilisateur en concluait que
+  // sa recharge n'avait pas eu lieu. Constate en reel le 2026-09-06 sur une
+  // recharge de 200 Mo pourtant bien livree cote Airalo.
+  // On recharge donc a chaque prise de focus. Les regions, elles, ne bougent
+  // pas d'une navigation a l'autre : elles restent chargees une seule fois.
+  useFocusEffect(useCallback(() => { loadData() }, []))
 
   async function loadRegions() {
     const { data } = await supabase

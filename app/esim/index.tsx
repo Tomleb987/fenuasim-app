@@ -1,12 +1,12 @@
 // Liste complete des eSIM du compte -- n'existait pas avant cette passe UX :
 // l'accueil plafonne a 3 eSIM (limit(3)) sans lien "voir tout", et "Mes eSIM"
 // dans le compte renvoyait vers l'accueil au lieu d'une vraie liste.
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
-import { useRouter } from 'expo-router'
+import { useRouter, useFocusEffect } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { COLORS } from '../../constants/theme'
 import { useTravelers } from '../../hooks/useTravelers'
@@ -24,7 +24,9 @@ export default function AllEsimsScreen() {
   const { byIccid: getAssignment } = useEsimAssignments()
   const { fetchPackages, getPackageDisplay } = usePackageInfo()
 
-  useEffect(() => { loadEsims() }, [])
+  // Meme raison que sur l'accueil : en revenant de l'ecran de recharge par le
+  // bouton retour, cet ecran reste monte et affichait un solde perime.
+  useFocusEffect(useCallback(() => { loadEsims() }, []))
 
   async function loadEsims() {
     setLoading(true)
