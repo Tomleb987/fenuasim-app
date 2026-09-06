@@ -117,6 +117,9 @@ présent dans `package.json` — vérifié.
 |---|---|---|
 | Vos données sont-elles chiffrées en transit ? | **Oui** | 100 % des appels en `https://`, zéro URL `http://` dans le code ; le manifeste Android n'autorise pas le trafic en clair |
 | Les utilisateurs peuvent-ils demander la suppression de leurs données ? | **Oui** | Suppression de compte directement dans l'app (`app/account/delete.tsx` → Edge Function `delete-account`) |
+| Méthodes de création de compte prises en charge | **Nom d'utilisateur et mot de passe**, et rien d'autre | `signUp` / `signInWithPassword` uniquement — aucun OAuth, OTP, SSO ni biométrie dans le code |
+| URL de suppression de compte | ⚠️ **À CRÉER** — voir `PAGE_SUPPRESSION_COMPTE.md` | Champ obligatoire chez Google. La page n'existe pas encore sur fenuasim.com ; `/confidentialite` ne décrit aucune procédure |
+| Suppression partielle sans supprimer le compte | **Non** | L'app ne propose pas de suppression partielle |
 | Collectez-vous des données ? | **Oui** | voir tableau ci-dessous |
 | Partagez-vous des données avec des tiers ? | **Oui** | Stripe (paiement), Airalo (fourniture de l'eSIM), Brevo (e-mail de confirmation) |
 
