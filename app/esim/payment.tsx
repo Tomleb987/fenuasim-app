@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Linking } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase'
 import { COLORS } from '../../constants/theme'
 import { useCurrency } from '../../lib/currency'
 import { validateEsimPromoCode } from '../../hooks/usePromoCode'
+import { openCheckout } from '../../lib/checkout'
 
 export default function PaymentScreen() {
   const router = useRouter()
@@ -67,7 +68,7 @@ export default function PaymentScreen() {
         return
       }
 
-      await Linking.openURL(data.url)
+      await openCheckout(data.url)
 
     } catch (e: any) {
       console.error('handlePayment:', e)

@@ -12,6 +12,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router'
 import { COLORS } from '../constants/theme'
 import { fetchTopupOrderBySession } from '../hooks/useEsimTopups'
 import { EsimTopupStatus } from '../types'
+import { closeCheckoutBrowser } from '../lib/checkout'
 
 const POLL_INTERVAL_MS = 3000
 const POLL_TIMEOUT_MS = 45000
@@ -23,6 +24,10 @@ export default function TopupSuccess() {
   const [lastError, setLastError] = useState<string | null>(null)
   const [timedOut, setTimedOut] = useState(false)
   const stopRef = useRef(false)
+
+  // Retour de Stripe : sur iOS le SFSafariViewController reste presente
+  // derriere l'app, on le referme. Sans effet sur Android (voir lib/checkout).
+  useEffect(() => { closeCheckoutBrowser() }, [])
 
   useEffect(() => {
     if (!session_id) return

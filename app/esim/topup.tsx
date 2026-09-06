@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Linking } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -8,6 +8,7 @@ import { COLORS, EUR_TO_XPF } from '../../constants/theme'
 import { useCurrency } from '../../lib/currency'
 import { useEsimTopups } from '../../hooks/useEsimTopups'
 import { EsimTopupOption } from '../../types'
+import { openCheckout } from '../../lib/checkout'
 
 export default function EsimTopupScreen() {
   const router = useRouter()
@@ -30,7 +31,7 @@ export default function EsimTopupScreen() {
     setCreating(true)
     try {
       const { url } = await createCheckout(iccid, selected.package_id)
-      await Linking.openURL(url)
+      await openCheckout(url)
     } catch (e: any) {
       console.error('handleRecharge:', e)
       Alert.alert('Erreur', 'Impossible de créer le paiement, veuillez réessayer.')

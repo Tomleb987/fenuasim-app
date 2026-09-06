@@ -2,15 +2,20 @@
 // configure cote create-topup-checkout). Aucun appel Airalo n'a lieu dans ce
 // cas -- la ligne esim_topup_orders reste en pending_payment, conformement
 // au fonctionnement deja retenu pour les paiements eSIM/assurance.
-import React from 'react'
+import React, { useEffect } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { COLORS } from '../constants/theme'
+import { closeCheckoutBrowser } from '../lib/checkout'
 
 export default function TopupCancel() {
   const router = useRouter()
+
+  // Retour de Stripe : sur iOS le SFSafariViewController reste presente
+  // derriere l'app, on le referme. Sans effet sur Android (voir lib/checkout).
+  useEffect(() => { closeCheckoutBrowser() }, [])
 
   return (
     <SafeAreaView style={s.safe}>

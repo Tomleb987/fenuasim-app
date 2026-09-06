@@ -3,15 +3,20 @@
 // route avant cette phase : sans lui, l'annulation d'un paiement laissait
 // l'utilisateur sur une route non appariee. Ecran minimal, sans logique
 // metier nouvelle -- seul un retour propre vers l'accueil.
-import React from 'react'
+import React, { useEffect } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { COLORS } from '../constants/theme'
+import { closeCheckoutBrowser } from '../lib/checkout'
 
 export default function PaymentCancel() {
   const router = useRouter()
+
+  // Retour de Stripe : sur iOS le SFSafariViewController reste presente
+  // derriere l'app, on le referme. Sans effet sur Android (voir lib/checkout).
+  useEffect(() => { closeCheckoutBrowser() }, [])
 
   return (
     <SafeAreaView style={s.safe}>

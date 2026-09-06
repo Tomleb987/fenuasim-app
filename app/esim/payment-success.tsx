@@ -7,6 +7,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { COLORS } from '../../constants/theme'
 import EsimInstallBlock, { hasInstallData } from '../../components/EsimInstallBlock'
+import { closeCheckoutBrowser } from '../../lib/checkout'
 
 // 2026-09-04 : cet ecran ne declenche plus rien. Auparavant il appelait
 // lui-meme fenuasim.com/api/create-airalo-order depuis le client, sans
@@ -29,10 +30,17 @@ export default function PaymentSuccess() {
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [showTechInfo, setShowTechInfo] = useState(false)
+  // Livraison Airalo en echec : distinct d'une erreur de paiement, puisque le
+  // paiement, lui, a bien abouti.
+  const [deliveryFailed, setDeliveryFailed] = useState(false)
+  const [techRef, setTechRef] = useState<string | null>(null)
   const cancelled = useRef(false)
 
   useEffect(() => {
     cancelled.current = false
+    // Retour de Stripe : sur iOS le SFSafariViewController reste presente
+    // derriere l'app, on le referme. Sans effet sur Android (voir lib/checkout).
+    closeCheckoutBrowser()
     if (session_id) watchOrder()
     return () => { cancelled.current = true }
   }, [session_id, package_id])
@@ -41,6 +49,8 @@ export default function PaymentSuccess() {
     setLoading(true)
     setError(null)
     setPending(false)
+    setDeliveryFailed(false)
+    setTechRef(null)
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Non connecte')
@@ -83,7 +93,16 @@ export default function PaymentSuccess() {
         }
 
         if (row?.status === 'failed') {
-          throw new Error(row.last_error || "La creation de votre eSIM a echoue.")
+          // Le paiement a bien ete encaisse -- seule la livraison Airalo a
+          // echoue. On ne parle donc jamais d'echec de paiement, et surtout on
+          // n'affiche plus last_error tel quel : c'est un message serveur brut
+          // (jusqu'a 500 caracteres, parfois du JSON Airalo) qui n'a aucun sens
+          // pour le client. Il est conserve sous forme de reference courte,
+          // comme sur l'ecran de recharge.
+          setTechRef(row.last_error ? String(row.last_error).slice(0, 120) : null)
+          setDeliveryFailed(true)
+          setLoading(false)
+          return
         }
 
         await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS))
@@ -98,7 +117,11 @@ export default function PaymentSuccess() {
       }
     } catch (e: any) {
       if (!cancelled.current) {
-        setError(e.message)
+        // Idem : le message d'exception peut venir de Supabase ou du reseau.
+        // Il est garde en reference technique, jamais montre comme message
+        // principal.
+        setTechRef(e?.message ? String(e.message).slice(0, 120) : null)
+        setError("Nous n'avons pas pu recuperer l'etat de votre commande.")
         setLoading(false)
       }
     }
@@ -129,12 +152,36 @@ export default function PaymentSuccess() {
     </SafeAreaView>
   )
 
+  if (deliveryFailed) return (
+    <SafeAreaView style={s.safe}>
+      <View style={s.center}>
+        <Ionicons name="time-outline" size={60} color={COLORS.violet} />
+        <Text style={s.errorTitle}>Paiement bien recu</Text>
+        <Text style={s.errorSub}>
+          Votre paiement a bien ete enregistre, mais la creation de votre eSIM demande un peu plus de temps.
+          Notre equipe suit ce dossier automatiquement et vous recevrez votre QR code par email.
+        </Text>
+        {!!techRef && <Text style={s.techDetail}>Reference technique : {techRef}</Text>}
+        <TouchableOpacity style={s.retryBtn} onPress={watchOrder}>
+          <Text style={s.retryTxt}>Actualiser</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push('/support')}>
+          <Text style={s.ghostTxt}>Contacter le support</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.replace('/(tabs)')}>
+          <Text style={s.ghostTxt}>Retour a l'accueil</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  )
+
   if (error) return (
     <SafeAreaView style={s.safe}>
       <View style={s.center}>
         <Ionicons name="alert-circle-outline" size={60} color="#FD7F3C" />
         <Text style={s.errorTitle}>Une erreur est survenue</Text>
         <Text style={s.errorSub}>{error}</Text>
+        {!!techRef && <Text style={s.techDetail}>Reference technique : {techRef}</Text>}
         <TouchableOpacity style={s.retryBtn} onPress={watchOrder}>
           <Text style={s.retryTxt}>Reessayer</Text>
         </TouchableOpacity>
