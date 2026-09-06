@@ -229,28 +229,30 @@ statut `success`, chacune avec QR code, adresse SM-DP+ et code d'activation, plu
 recharge aboutie**. Le testeur voit donc une application pleine — c'est précisément ce qui
 manquait lors du rejet Apple 2.1, où le compte était vide.
 
-**Texte à coller dans « Toute autre instruction » :**
+**Texte à coller dans « Toute autre instruction » — le champ est limité à 500 caractères.**
+
+Version retenue (483 caractères) :
 
 ```
-Toutes les fonctionnalités nécessitent un compte. Les identifiants ci-dessus donnent un
-accès complet.
+Compte de démo déjà approvisionné : 5 eSIM et 1 recharge. « Mes eSIM », installation, consommation et recharge sont accessibles sans achat.
 
-Ce compte contient déjà 5 eSIM actives et une recharge effectuée. Les sections "Mes eSIM",
-l'écran d'installation (adresse SM-DP+, code d'activation, QR code), le suivi de
-consommation et l'écran de recharge sont donc accessibles directement, sans achat.
+Achat : page Stripe hébergée en navigateur intégré, inutile de payer pour évaluer.
 
-Achat : il passe par une page de paiement Stripe hébergée, ouverte dans un onglet de
-navigateur intégré. Il n'est pas nécessaire de finaliser un paiement réel pour évaluer
-l'application.
+Android : installation par saisie de l'adresse SM-DP+ et du code d'activation dans les Paramètres ; le QR se scanne depuis un 2e appareil. Ce n'est pas un défaut.
 
-Installation d'une eSIM sur Android : l'application affiche l'adresse SM-DP+ et le code
-d'activation à saisir manuellement dans Paramètres > Réseaux et Internet > Cartes SIM.
-C'est la seule méthode réellement supportée sur Android ; le QR code affiché est destiné à
-être scanné depuis un second appareil. Ce n'est pas un défaut de l'application.
+Assurance : réservée aux résidents de Polynésie française. Restriction voulue, pas une erreur.
+```
 
-Onglet Assurance : l'offre d'assurance voyage est contractuellement réservée aux résidents
-de Polynésie française. Un testeur situé hors de cette zone verra un message de restriction.
-Il s'agit d'une limitation voulue, pas d'une erreur.
+Repli si le compteur de Google refuse (423 caractères) :
+
+```
+Compte de démo approvisionné : 5 eSIM et 1 recharge, donc « Mes eSIM », installation, consommation et recharge accessibles sans achat.
+
+Achat : page Stripe hébergée, inutile de payer pour évaluer.
+
+Android : installation par saisie SM-DP+ et code d'activation dans les Paramètres ; le QR se scanne depuis un 2e appareil. Normal, pas un défaut.
+
+Assurance : réservée aux résidents de Polynésie française. Restriction voulue.
 ```
 
 > Les deux derniers paragraphes désamorcent les deux comportements qu'un testeur pourrait
