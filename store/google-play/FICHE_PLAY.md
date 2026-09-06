@@ -99,7 +99,7 @@ Site : https://www.fenuasim.com
 ```
 
 **Paragraphe optionnel — à ajouter UNIQUEMENT si l'onglet Assurance reste dans la version
-publiée** (voir §8, décision en attente) :
+publiée** (voir §11, décision en attente) :
 
 ```
 • Assurer votre voyage — Souscrivez une assurance voyage AVA (frais médicaux, annulation,
