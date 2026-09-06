@@ -42,7 +42,7 @@ _73 caractères._
 
 ## 3. Description complète (4000 caractères max)
 
-_Longueur du texte ci-dessous : 2 295 caractères._
+_Longueur du texte ci-dessous : 2 472 caractères._
 
 ```
 FenuaSIM, votre eSIM pour voyager connecté.
@@ -76,6 +76,9 @@ CE QUE VOUS POUVEZ FAIRE
 • Organiser vos voyages à plusieurs — Attribuez une eSIM à un voyageur et à un appareil
   pour savoir qui utilise quoi, pratique en famille ou en groupe.
 
+• Assurer votre voyage — Souscrivez une assurance voyage AVA (frais médicaux, annulation,
+  bagages) depuis l'application. Offre réservée aux résidents de Polynésie française.
+
 • Être aidé rapidement — Une assistance dans l'application, une foire aux questions, et
   un contact direct par WhatsApp ou par e-mail.
 
@@ -98,13 +101,8 @@ E-mail : contact@fenuasim.com
 Site : https://www.fenuasim.com
 ```
 
-**Paragraphe optionnel — à ajouter UNIQUEMENT si l'onglet Assurance reste dans la version
-publiée** (voir §11, décision en attente) :
-
-```
-• Assurer votre voyage — Souscrivez une assurance voyage AVA (frais médicaux, annulation,
-  bagages) depuis l'application. Offre réservée aux résidents de Polynésie française.
-```
+> Décision du 2026-09-06 : l'onglet Assurance **reste dans la version publiée**. Le
+> paragraphe correspondant est donc déjà intégré à la description ci-dessus.
 
 ---
 
@@ -269,18 +267,19 @@ Une capture plein écran d'un téléphone récent convient directement.
 
 ---
 
-## 11. Décision en attente
+## 11. Assurance — décision prise
 
-**L'onglet « Assurance » est présent dans la navigation de l'application.** Le parcours
-est fonctionnel (assurance voyage AVA, réservée aux résidents de Polynésie française).
+**Tranchée le 2026-09-06 : l'onglet « Assurance » est CONSERVÉ dans la version publiée.**
 
-Deux options, à trancher avant de soumettre :
+Le parcours est fonctionnel (assurance voyage AVA). Le paragraphe correspondant est intégré
+à la description complète du §3.
 
-- **Le garder** → ajouter le paragraphe optionnel du §3, et vérifier que la restriction
-  géographique est claire pour un testeur Google qui n'est pas en Polynésie (sinon il
-  verra une fonctionnalité qui refuse de s'exécuter, ce qui se lit comme un bug).
-- **Le masquer pour la V1** → l'onglet disparaît, la description reste telle quelle.
-  Demande une modification de code et une nouvelle build.
+**Point à surveiller à la review.** L'offre est contractuellement réservée aux résidents de
+Polynésie française (`app/(tabs)/insurance.tsx`, et case de résidence dans
+`app/insurance/form.tsx`). Un testeur Google situé ailleurs verra donc une fonctionnalité
+qui refuse d'aboutir. Il faut que le message affiché soit assez explicite pour se lire comme
+une restriction voulue, et non comme un bug — sinon c'est un motif de rejet classique.
+Le mentionner aussi dans les notes destinées au testeur (§9).
 
 ---
 
