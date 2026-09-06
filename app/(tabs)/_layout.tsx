@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { Tabs } from 'expo-router'
 import { View, Text, StyleSheet, Pressable, Animated, GestureResponderEvent } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/theme'
 
@@ -42,11 +43,20 @@ function BouncyTabButton(props: any) {
 }
 
 export default function TabsLayout() {
+  // Android SDK 35+ impose l'affichage edge-to-edge : la navbar systeme (geste
+  // ou 3 boutons) se superpose au contenu. Une hauteur de barre fixe laisserait
+  // donc les libelles et les icones sous la barre systeme. On ajoute l'inset
+  // reel plutot qu'une valeur devinee.
+  const insets = useSafeAreaInsets()
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: [
+          styles.tabBar,
+          { height: styles.tabBar.height + insets.bottom, paddingBottom: styles.tabBar.paddingBottom + insets.bottom },
+        ],
         tabBarActiveTintColor: COLORS.violet,
         tabBarInactiveTintColor: INACTIVE_VIOLET,
         tabBarLabelStyle: styles.tabLabel,

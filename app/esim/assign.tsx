@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, ScrollView } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { COLORS } from '../../constants/theme'
@@ -13,6 +13,10 @@ type Step = 1 | 2 | 3 | 4
 
 export default function AssignEsim() {
   const router = useRouter()
+  // Android SDK 35+ impose l'edge-to-edge : la barre de navigation systeme se
+  // superpose au bas de l'ecran. Sans cet inset, le bouton principal passe
+  // partiellement sous la barre de gestes ou les 3 boutons.
+  const insets = useSafeAreaInsets()
   const params = useLocalSearchParams<{
     iccid: string
     airaloOrderId?: string
@@ -129,7 +133,11 @@ export default function AssignEsim() {
         )}
       </LinearGradient>
 
-      <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}
+        // La barre d'action est en position absolue : sans cette reserve, le
+        // dernier element de la liste reste masque dessous.
+        contentContainerStyle={{ paddingBottom: 100 + insets.bottom }}
+      >
 
         {step === 1 && (
           <View>
@@ -262,7 +270,7 @@ export default function AssignEsim() {
       </ScrollView>
 
       {step < 4 && (
-        <View style={s.ctaBar}>
+        <View style={[s.ctaBar, { paddingBottom: 16 + insets.bottom }]}>
           {step === 1 && (
             <TouchableOpacity style={[s.ctaWrapNeutral, !travelerId && s.ctaDisabled]} disabled={!travelerId} onPress={() => setStep(2)}>
               <View style={s.cta}><Text style={s.ctaTxtNeutral}>Continuer</Text></View>
@@ -284,7 +292,7 @@ export default function AssignEsim() {
       )}
 
       {step === 4 && (
-        <View style={s.ctaBar}>
+        <View style={[s.ctaBar, { paddingBottom: 16 + insets.bottom }]}>
           <TouchableOpacity style={s.ctaWrapNeutral} onPress={() => router.replace('/(tabs)')}>
             <View style={s.cta}><Text style={s.ctaTxtNeutral}>Retour a l'accueil</Text></View>
           </TouchableOpacity>

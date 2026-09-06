@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image, Platform, Linking, ScrollView } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { COLORS } from '../../constants/theme'
+import EsimInstallBlock, { hasInstallData } from '../../components/EsimInstallBlock'
 
 // 2026-09-04 : cet ecran ne declenche plus rien. Auparavant il appelait
 // lui-meme fenuasim.com/api/create-airalo-order depuis le client, sans
@@ -28,7 +29,6 @@ export default function PaymentSuccess() {
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [showTechInfo, setShowTechInfo] = useState(false)
-  const [showQr, setShowQr] = useState(false)
   const cancelled = useRef(false)
 
   useEffect(() => {
@@ -122,7 +122,7 @@ export default function PaymentSuccess() {
         <TouchableOpacity style={s.retryBtn} onPress={watchOrder}>
           <Text style={s.retryTxt}>Actualiser</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => router.push('/(tabs)')}>
+        <TouchableOpacity onPress={() => router.replace('/(tabs)')}>
           <Text style={s.ghostTxt}>Retour a l'accueil</Text>
         </TouchableOpacity>
       </View>
@@ -138,7 +138,7 @@ export default function PaymentSuccess() {
         <TouchableOpacity style={s.retryBtn} onPress={watchOrder}>
           <Text style={s.retryTxt}>Reessayer</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => router.push('/(tabs)')}>
+        <TouchableOpacity onPress={() => router.replace('/(tabs)')}>
           <Text style={s.ghostTxt}>Retour a l'accueil</Text>
         </TouchableOpacity>
       </View>
@@ -173,71 +173,7 @@ export default function PaymentSuccess() {
           </View>
         )}
 
-        {(!!order?.qr_code_url || !!order?.apple_installation_url) && (
-          <View style={s.installBox}>
-            <Text style={s.installTitle}>Installer votre eSIM</Text>
-
-            {Platform.OS === 'ios' && !!order?.apple_installation_url && (
-              <TouchableOpacity style={s.ctaWrap} onPress={() => Linking.openURL(order.apple_installation_url)}>
-                <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.cta}>
-                  <Ionicons name="download-outline" size={20} color="#fff" style={{marginRight:8}} />
-                  <Text style={s.ctaTxt}>Installer sur cet iPhone</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            )}
-
-            {!!order?.qr_code_url && (
-              <>
-                <TouchableOpacity style={s.qrToggle} onPress={() => setShowQr((v) => !v)}>
-                  <Ionicons name="qr-code-outline" size={18} color={COLORS.violet} />
-                  <Text style={s.qrToggleTxt}>{showQr ? 'Masquer mon QR code' : 'Voir mon QR code'}</Text>
-                  <Ionicons name={showQr ? 'chevron-up' : 'chevron-down'} size={16} color={COLORS.textMuted} />
-                </TouchableOpacity>
-                {showQr && (
-                  <View style={s.qrWrap}>
-                    <Text style={s.installSub}>Scannez ce QR code depuis un autre appareil :</Text>
-                    <Image source={{ uri: order.qr_code_url }} style={s.qrImg} resizeMode="contain" />
-                  </View>
-                )}
-              </>
-            )}
-
-            {Platform.OS === 'android' && (!!order?.lpa || !!order?.matching_id) && (
-              <View style={s.manualBox}>
-                {/* Chemin Android : le QR est affiche sur l'appareil meme ou l'eSIM
-                    doit etre installee, donc inscannable. La saisie manuelle de
-                    l'adresse SM-DP+ et du code d'activation est la seule voie. */}
-                <Text style={s.manualTitle}>Installation manuelle (Android)</Text>
-                {!!order?.lpa && (
-                  <>
-                    <Text style={s.manualLabel}>Adresse SM-DP+</Text>
-                    <Text style={s.manualValue} selectable>{order.lpa}</Text>
-                  </>
-                )}
-                {!!order?.matching_id && (
-                  <>
-                    <Text style={s.manualLabel}>Code d'activation</Text>
-                    <Text style={s.manualValue} selectable>{order.matching_id}</Text>
-                  </>
-                )}
-                <Text style={s.manualHint}>Reglages &gt; Reseau mobile &gt; Ajouter une eSIM &gt; Saisir manuellement</Text>
-              </View>
-            )}
-
-            {!!order?.sharing_link && (
-              <TouchableOpacity style={s.cloudRow} onPress={() => Linking.openURL(order.sharing_link)}>
-                <Ionicons name="cloud-outline" size={20} color={COLORS.violet} />
-                <View style={s.cloudTxtWrap}>
-                  <Text style={s.cloudTitle}>Installer et suivre sur esims.cloud</Text>
-                  {!!order?.sharing_access_code && (
-                    <Text style={s.cloudSub}>Code d'acces : {order.sharing_access_code}</Text>
-                  )}
-                </View>
-                <Ionicons name="open-outline" size={16} color={COLORS.textMuted} />
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
+        {hasInstallData(order) && <EsimInstallBlock order={order} />}
 
         {order?.sim_iccid && (
           <TouchableOpacity
@@ -272,7 +208,10 @@ export default function PaymentSuccess() {
           </View>
         )}
 
-        <TouchableOpacity style={s.ghost} onPress={() => router.push('/(tabs)')}>
+        {/* replace et non push : sur Android le bouton retour systeme ramenait
+            sinon sur cet ecran de confirmation puis sur l'ecran de paiement,
+            deja consommes. */}
+        <TouchableOpacity style={s.ghost} onPress={() => router.replace('/(tabs)')}>
           <Text style={s.ghostTxt}>{order?.sim_iccid ? 'Plus tard' : "Retour a l'accueil"}</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -299,22 +238,7 @@ const s = StyleSheet.create({
   techToggle:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,paddingVertical:6},
   techToggleTxt:{fontSize:12,color:COLORS.textMuted,fontWeight:'600'},
   techDetail:{fontSize:12,color:'#aaa',textAlign:'center',marginTop:2},
-  installBox:{backgroundColor:'#fff',borderRadius:16,padding:16,marginBottom:16,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
-  installTitle:{fontSize:15,fontWeight:'700',color:COLORS.text,marginBottom:6},
-  installSub:{fontSize:13,color:'#888',lineHeight:20,marginBottom:12},
   qrToggle:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,paddingVertical:12,marginTop:16,borderWidth:1.5,borderColor:COLORS.violet,borderRadius:12},
-  qrToggleTxt:{fontSize:13,fontWeight:'700',color:COLORS.violet},
-  qrWrap:{alignItems:'center',backgroundColor:'#fff',borderRadius:12,padding:12,borderWidth:1,borderColor:COLORS.border,marginTop:12,marginBottom:4},
-  qrImg:{width:190,height:190},
-  manualBox:{backgroundColor:COLORS.bg,borderRadius:12,padding:14,borderWidth:1,borderColor:COLORS.border,marginBottom:16},
-  manualTitle:{fontSize:13,fontWeight:'800',color:COLORS.text,marginBottom:10},
-  manualLabel:{fontSize:11,fontWeight:'700',color:COLORS.textMuted,textTransform:'uppercase',letterSpacing:0.3,marginBottom:3},
-  manualValue:{fontSize:13,color:COLORS.text,fontWeight:'600',marginBottom:10},
-  manualHint:{fontSize:11,color:COLORS.textMuted,lineHeight:16},
-  cloudRow:{flexDirection:'row',alignItems:'center',backgroundColor:COLORS.bg,borderRadius:12,padding:14,borderWidth:1,borderColor:COLORS.border},
-  cloudTxtWrap:{flex:1,marginLeft:10},
-  cloudTitle:{fontSize:14,fontWeight:'700',color:COLORS.text},
-  cloudSub:{fontSize:12,color:COLORS.textMuted,marginTop:2},
   ctaWrap:{borderRadius:14,overflow:'hidden'},
   cta:{padding:14,alignItems:'center',flexDirection:'row',justifyContent:'center'},
   ctaTxt:{color:'#fff',fontSize:15,fontWeight:'800'},

@@ -22,7 +22,16 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.fenuasim.app",
-      "versionCode": 4
+      "versionCode": 4,
+      "permissions": [
+        "android.permission.INTERNET"
+      ],
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.VIBRATE"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",

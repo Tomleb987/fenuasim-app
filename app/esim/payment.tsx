@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Linking } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { supabase } from '../../lib/supabase'
@@ -11,6 +11,10 @@ import { validateEsimPromoCode } from '../../hooks/usePromoCode'
 
 export default function PaymentScreen() {
   const router = useRouter()
+  // Android SDK 35+ impose l'edge-to-edge : la barre de navigation systeme se
+  // superpose au bas de l'ecran. Sans cet inset, le bouton principal passe
+  // partiellement sous la barre de gestes ou les 3 boutons.
+  const insets = useSafeAreaInsets()
   const { formatXpf } = useCurrency()
   const [loading, setLoading] = useState(false)
   const [promoCode, setPromoCode] = useState('')
@@ -141,7 +145,7 @@ export default function PaymentScreen() {
         </View>
       </View>
 
-      <View style={s.ctaBar}>
+      <View style={[s.ctaBar, { paddingBottom: 16 + insets.bottom }]}>
         <TouchableOpacity style={s.ctaWrap} onPress={handlePayment} disabled={loading}>
           <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.cta}>
             {loading

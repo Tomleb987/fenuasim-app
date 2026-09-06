@@ -14,6 +14,7 @@ import { usePackageInfo, looksLikeTechnicalSlug } from '../../hooks/usePackageIn
 import { getFR } from '../../lib/regionNames'
 import { useCurrency } from '../../lib/currency'
 import { getEsimStatus } from '../../lib/esimStatus'
+import { hasInstallData } from '../../components/EsimInstallBlock'
 import dayjs from 'dayjs'
 
 // Ordre d'affichage voulu pour les forfaits regionaux ; seules les regions
@@ -299,13 +300,18 @@ export default function HomeScreen() {
                       </View>
                     )}
 
-                    {e.apple_installation_url && (
+                    {/* Ce bouton ouvrait auparavant apple_installation_url sur
+                        toutes les plateformes : sur Android ce lien Apple
+                        n'aboutit a rien. On passe desormais par l'ecran
+                        d'installation, qui propose a chaque plateforme la seule
+                        methode qu'elle supporte reellement. */}
+                    {hasInstallData(e) && (
                       <TouchableOpacity
                         style={s.installBtn}
-                        onPress={() => {
-                          const { Linking } = require('react-native')
-                          Linking.openURL(e.apple_installation_url)
-                        }}
+                        onPress={() => router.push({
+                          pathname: '/esim/install',
+                          params: { orderId: e.id, destination: pkgDisplay.destination },
+                        })}
                       >
                         <Ionicons name="download-outline" size={14} color={COLORS.violet} />
                         <Text style={s.installTxt}>Installer l'eSIM</Text>

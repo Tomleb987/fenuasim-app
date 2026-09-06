@@ -13,6 +13,7 @@ import { useTravelers } from '../../hooks/useTravelers'
 import { useEsimAssignments } from '../../hooks/useEsimAssignments'
 import { usePackageInfo, looksLikeTechnicalSlug } from '../../hooks/usePackageInfo'
 import { getEsimStatus } from '../../lib/esimStatus'
+import { hasInstallData } from '../../components/EsimInstallBlock'
 import dayjs from 'dayjs'
 
 export default function AllEsimsScreen() {
@@ -138,6 +139,18 @@ export default function AllEsimsScreen() {
                 </View>
 
                 <View style={s.actionsRow}>
+                  {/* "Mes eSIM" n'offrait aucune installation : sur Android,
+                      quitter l'ecran de confirmation d'achat rendait l'eSIM
+                      definitivement non installable depuis l'application. */}
+                  {hasInstallData(e) && (
+                    <TouchableOpacity
+                      style={s.actionBtn}
+                      onPress={() => router.push({ pathname: '/esim/install', params: { orderId: e.id, destination: getPackageDisplay(e.package_id).destination } })}
+                    >
+                      <Ionicons name="download-outline" size={14} color={COLORS.violet} />
+                      <Text style={s.actionTxt}>Installer</Text>
+                    </TouchableOpacity>
+                  )}
                   {iccid && !isExpired && (
                     <TouchableOpacity
                       style={s.actionBtn}

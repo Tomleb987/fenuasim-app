@@ -1,7 +1,7 @@
 import React from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { COLORS } from '../../constants/theme'
@@ -11,6 +11,10 @@ import { Device } from '../../types'
 
 export default function DevicesScreen() {
   const router = useRouter()
+  // Android SDK 35+ impose l'edge-to-edge : la barre de navigation systeme se
+  // superpose au bas de l'ecran. Sans cet inset, le bouton principal passe
+  // partiellement sous la barre de gestes ou les 3 boutons.
+  const insets = useSafeAreaInsets()
   const { devices, loading: loadingDevices } = useDevices()
   const { travelers, loading: loadingTravelers } = useTravelers()
   const loading = loadingDevices || loadingTravelers
@@ -39,7 +43,11 @@ export default function DevicesScreen() {
           <ActivityIndicator color={COLORS.violet} size="large" />
         </View>
       ) : (
-        <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
+        <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}
+          // La barre d'action est en position absolue : sans cette reserve, le
+          // dernier element de la liste reste masque dessous.
+          contentContainerStyle={{ paddingBottom: 100 + insets.bottom }}
+        >
           {devices.length === 0 ? (
             <View style={s.empty}>
               <View style={s.emptyIcon}>
@@ -77,7 +85,7 @@ export default function DevicesScreen() {
         </ScrollView>
       )}
 
-      <View style={s.ctaBar}>
+      <View style={[s.ctaBar, { paddingBottom: 16 + insets.bottom }]}>
         <TouchableOpacity style={s.ctaWrap} onPress={() => router.push('/devices/edit')}>
           <View style={s.cta}>
             <Ionicons name="add" size={20} color={COLORS.violet} />

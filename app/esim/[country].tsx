@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, FlatList, Modal, ScrollView } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { supabase } from '../../lib/supabase'
@@ -70,6 +70,10 @@ function matchesTypeFilter(t: PlanCoverageType, f: TypeFilter): boolean {
 
 export default function CountryDetail() {
   const router = useRouter()
+  // Android SDK 35+ impose l'edge-to-edge : la barre de navigation systeme se
+  // superpose au bas de l'ecran. Sans cet inset, le bouton principal passe
+  // partiellement sous la barre de gestes ou les 3 boutons.
+  const insets = useSafeAreaInsets()
   const { formatXpf } = useCurrency()
   const { country: slug } = useLocalSearchParams<{ country: string }>()
   const [plans, setPlans] = useState<Pkg[]>([])
@@ -367,7 +371,7 @@ export default function CountryDetail() {
       )}
 
       {sel && !loading && !error && plans.length > 0 && (
-        <View style={s.ctaBar}>
+        <View style={[s.ctaBar, { paddingBottom: 16 + insets.bottom }]}>
           <View style={s.selectionSummary}>
             <Text style={s.selectionSummaryTitle}>Votre choix</Text>
             <Text style={s.selectionSummaryTxt}>
