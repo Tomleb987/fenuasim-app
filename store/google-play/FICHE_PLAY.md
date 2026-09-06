@@ -209,33 +209,53 @@ sans anticiper un refus.
 
 ---
 
-## 9. Accès à l'application (App access)
+## 9. Informations de connexion (ex-« Accès à l'application »)
 
-L'application **exige un compte** : un garde d'authentification renvoie vers l'écran de
-connexion tant que l'utilisateur n'est pas identifié (`app/_layout.tsx`).
+**Une partie de votre appli est-elle limitée ? → OUI.** Un garde d'authentification
+(`app/_layout.tsx`) renvoie vers l'écran de connexion tant que l'utilisateur n'est pas
+identifié : aucune section n'est accessible sans compte.
 
-Il faut donc fournir des identifiants à Google. Texte à coller dans « Accès à l'application » :
+| Champ Play Console | Valeur |
+|---|---|
+| Nom | `Compte de démonstration — accès complet` |
+| Nom d'utilisateur | `fenuasim.qa.applereview@example.com` |
+| Mot de passe | **non consigné ici** — voir votre gestionnaire de mots de passe |
+
+> Le mot de passe n'est volontairement pas écrit dans ce dépôt. Vérifier qu'il fonctionne
+> avant de valider le formulaire.
+
+**État du compte, vérifié en base le 2026-09-06** : e-mail confirmé, **5 eSIM** toutes en
+statut `success`, chacune avec QR code, adresse SM-DP+ et code d'activation, plus **1
+recharge aboutie**. Le testeur voit donc une application pleine — c'est précisément ce qui
+manquait lors du rejet Apple 2.1, où le compte était vide.
+
+**Texte à coller dans « Toute autre instruction » :**
 
 ```
-Toutes les fonctionnalités nécessitent un compte. Identifiants de test fournis ci-dessous.
+Toutes les fonctionnalités nécessitent un compte. Les identifiants ci-dessus donnent un
+accès complet.
 
-Compte de démonstration :
-  E-mail : <à créer>
-  Mot de passe : <à créer>
+Ce compte contient déjà 5 eSIM actives et une recharge effectuée. Les sections "Mes eSIM",
+l'écran d'installation (adresse SM-DP+, code d'activation, QR code), le suivi de
+consommation et l'écran de recharge sont donc accessibles directement, sans achat.
 
-Ce compte contient déjà une eSIM de démonstration, ce qui permet d'accéder directement à
-« Mes eSIM », à l'écran d'installation (adresse SM-DP+, code d'activation, QR code) et à
-l'écran de recharge, sans avoir à effectuer d'achat.
-
-L'achat passe par une page de paiement Stripe hébergée, ouverte dans un onglet de
-navigateur intégré. Il n'est pas nécessaire de finaliser un paiement pour évaluer
+Achat : il passe par une page de paiement Stripe hébergée, ouverte dans un onglet de
+navigateur intégré. Il n'est pas nécessaire de finaliser un paiement réel pour évaluer
 l'application.
+
+Installation d'une eSIM sur Android : l'application affiche l'adresse SM-DP+ et le code
+d'activation à saisir manuellement dans Paramètres > Réseaux et Internet > Cartes SIM.
+C'est la seule méthode réellement supportée sur Android ; le QR code affiché est destiné à
+être scanné depuis un second appareil. Ce n'est pas un défaut de l'application.
+
+Onglet Assurance : l'offre d'assurance voyage est contractuellement réservée aux résidents
+de Polynésie française. Un testeur situé hors de cette zone verra un message de restriction.
+Il s'agit d'une limitation voulue, pas d'une erreur.
 ```
 
-> 🔴 **Action à faire avant de soumettre : le compte reviewer doit contenir au moins une
-> eSIM.** Un compte vide affiche un accueil et un « Mes eSIM » vides — le testeur ne voit
-> alors ni installation, ni consommation, ni recharge, c'est-à-dire l'essentiel de l'app.
-> C'est exactement ce qui a valu le rejet Apple 2.1. Ne pas réutiliser un compte client réel.
+> Les deux derniers paragraphes désamorcent les deux comportements qu'un testeur pourrait
+> prendre pour des bugs : l'absence d'installation « en un tap » sur Android, et la
+> restriction géographique de l'assurance.
 
 ---
 
