@@ -1,7 +1,6 @@
 import { useRef } from 'react'
 import { Tabs } from 'expo-router'
-import { View, Text, StyleSheet, Pressable, Animated, GestureResponderEvent } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
+import { View, StyleSheet, Pressable, Animated, GestureResponderEvent } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS } from '../../constants/theme'
@@ -74,24 +73,7 @@ export default function TabsLayout() {
         name="explore"
         options={{
           title: 'eSIM',
-          tabBarLabel: () => null,
-          tabBarIcon: ({ focused }) =>
-            focused ? (
-              <LinearGradient
-                colors={['#D251D8', '#FD7F3C']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.pill}
-              >
-                <Ionicons name="search" size={14} color="#fff" style={{ marginRight: 5 }} />
-                <Text style={styles.pillText}>eSIM</Text>
-              </LinearGradient>
-            ) : (
-              <View style={styles.pillInactive}>
-                <Ionicons name="search-outline" size={14} color={INACTIVE_VIOLET} style={{ marginRight: 5 }} />
-                <Text style={styles.pillTextInactive}>eSIM</Text>
-              </View>
-            ),
+          tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="cellular-outline" activeName="cellular" />,
         }}
       />
       <Tabs.Screen
@@ -140,33 +122,5 @@ const styles = StyleSheet.create({
   },
   iconWrapActive: {
     backgroundColor: 'rgba(210,81,216,0.16)',
-  },
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 24,
-    paddingHorizontal: 18,
-    paddingVertical: 9,
-    marginBottom: 4,
-  },
-  pillInactive: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 24,
-    paddingHorizontal: 18,
-    paddingVertical: 9,
-    marginBottom: 4,
-    borderWidth: 1.5,
-    borderColor: 'rgba(210,81,216,0.25)',
-  },
-  pillText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  pillTextInactive: {
-    color: INACTIVE_VIOLET,
-    fontSize: 13,
-    fontWeight: '800',
   },
 })
