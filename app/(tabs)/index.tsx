@@ -13,6 +13,8 @@ import { useEsimAssignments } from '../../hooks/useEsimAssignments'
 import { usePackageInfo, looksLikeTechnicalSlug } from '../../hooks/usePackageInfo'
 import { getFR } from '../../lib/regionNames'
 import { useCurrency } from '../../lib/currency'
+import { useSession } from '../../hooks/useSession'
+import { requireAuth } from '../../lib/authGate'
 import { getEsimStatus } from '../../lib/esimStatus'
 import { hasInstallData } from '../../components/EsimInstallBlock'
 import dayjs from 'dayjs'
@@ -69,6 +71,7 @@ function ConsoGauge({ pct, used, remaining }: { pct: number; used: string; remai
 export default function HomeScreen() {
   const router = useRouter()
   const { formatXpf } = useCurrency()
+  const { session, isGuest } = useSession()
   const [esims, setEsims] = useState<any[]>([])
   const [regions, setRegions] = useState<{ nameFR: string; slug: string; minPrice: number; key: string }[]>([])
   const { fetchUsage, getPct, getUsedStr, getRemainingStr, isLoading, hasReliableUsage } = useDataUsage()
@@ -149,6 +152,19 @@ export default function HomeScreen() {
               <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
             </LinearGradient>
           </TouchableOpacity>
+
+          {isGuest && (
+            <TouchableOpacity style={s.guestBanner} onPress={() => router.push('/(auth)/login')}>
+              <View style={s.guestBannerIcon}>
+                <Ionicons name="person-add-outline" size={18} color={COLORS.violet} />
+              </View>
+              <View style={{flex:1}}>
+                <Text style={s.guestBannerTitle}>Vous naviguez sans compte</Text>
+                <Text style={s.guestBannerTxt}>Connectez-vous pour acheter et retrouver vos eSIM.</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#ccc" />
+            </TouchableOpacity>
+          )}
 
           <View style={s.secHead}>
             <Text style={s.secTitle}>Destinations populaires</Text>
@@ -375,7 +391,10 @@ export default function HomeScreen() {
               </View>
               <Text style={s.gridLabel}>Support</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={s.gridCard} onPress={() => router.push('/insurance/form')}>
+            <TouchableOpacity
+              style={s.gridCard}
+              onPress={() => { if (requireAuth(router, session, '/insurance/form')) router.push('/insurance/form') }}
+            >
               <View style={[s.gridIcon,{backgroundColor:'rgba(253,127,60,0.12)'}]}>
                 <Ionicons name="shield-outline" size={24} color="#FD7F3C" />
               </View>
@@ -406,6 +425,10 @@ const s = StyleSheet.create({
   mainCta:{borderRadius:16,overflow:'hidden',marginBottom:20,marginTop:-12,shadowColor:'#D251D8',shadowOpacity:0.3,shadowRadius:8,elevation:4},
   mainCtaGrad:{flexDirection:'row',alignItems:'center',padding:18,gap:12},
   mainCtaTxt:{flex:1,color:'#fff',fontSize:17,fontWeight:'800'},
+  guestBanner:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:'#fff',borderRadius:16,padding:14,marginTop:14,borderWidth:1,borderColor:'rgba(210,81,216,0.25)'},
+  guestBannerIcon:{width:38,height:38,borderRadius:19,backgroundColor:'rgba(210,81,216,0.1)',alignItems:'center',justifyContent:'center'},
+  guestBannerTitle:{fontSize:14,fontWeight:'800',color:COLORS.text},
+  guestBannerTxt:{fontSize:12,color:COLORS.textMuted,marginTop:2},
   secHead:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:12,marginTop:4},
   secTitle:{fontSize:16,fontWeight:'700',color:COLORS.text},
   secLink:{fontSize:13,fontWeight:'600',color:COLORS.violet},

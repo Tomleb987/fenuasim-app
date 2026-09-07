@@ -48,7 +48,7 @@ export default function DeleteAccountScreen() {
       // l'ecran de connexion, sans jamais laisser l'utilisateur sur un ecran
       // authentifie.
       await supabase.auth.signOut()
-      router.replace('/(auth)/login')
+      router.replace('/(tabs)')
     } catch (e) {
       setErrorMsg("Impossible de supprimer votre compte pour le moment. Veuillez réessayer ou contacter le support FenuaSIM.")
       setLoading(false)

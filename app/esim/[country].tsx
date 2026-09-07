@@ -9,6 +9,8 @@ import { COLORS } from '../../constants/theme'
 import { getFR } from '../../lib/regionNames'
 import { getPlanType, getPlanTypeLabel, getPlanTypeIcon, parseVoiceSmsVolume, INTERNET_ONLY_CAPTION, INTERNET_ONLY_EXPLANATION, PlanCoverageType } from '../../hooks/usePackageInfo'
 import { useCurrency } from '../../lib/currency'
+import { useSession } from '../../hooks/useSession'
+import { requireAuth } from '../../lib/authGate'
 
 const GRAD: Record<string, [string, string]> = {
   'Japan': ['#FF6B6B', '#FF8E53'],
@@ -76,6 +78,7 @@ export default function CountryDetail() {
   const insets = useSafeAreaInsets()
   const { formatXpf } = useCurrency()
   const { country: slug } = useLocalSearchParams<{ country: string }>()
+  const { session } = useSession()
   const [plans, setPlans] = useState<Pkg[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -157,6 +160,11 @@ export default function CountryDetail() {
 
   function goToPayment() {
     if (!sel) return
+    // Le catalogue est ouvert a tous, le paiement non : livrer une eSIM exige un
+    // compte (c'est l'adresse email de livraison). On amene donc le visiteur a la
+    // connexion en gardant le chemin de ce forfait, pour le ramener ici -- et non
+    // sur l'accueil -- une fois son compte cree.
+    if (!requireAuth(router, session, `/esim/${slug}`)) return
     router.push({
       pathname: '/esim/payment',
       params: {

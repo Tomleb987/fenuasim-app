@@ -2,12 +2,25 @@ import React, { useState } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useRouter } from 'expo-router'
+import { Href, useLocalSearchParams, useRouter } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
 import { supabase } from '../../lib/supabase'
 import { COLORS } from '../../constants/theme'
 
 export default function RegisterScreen() {
   const router = useRouter()
+  // Propage le retour d'achat a travers l'inscription : sans lui, un visiteur
+  // qui cree son compte depuis un forfait se retrouverait sur l'accueil et
+  // devrait retrouver son forfait a la main.
+  const { redirect } = useLocalSearchParams<{ redirect?: string }>()
+  // La connexion n'est plus la racine de l'application : elle doit toujours
+  // offrir une sortie vers le catalogue. router.back() ne suffit pas -- on peut
+  // y arriver par un replace (fin de reinitialisation du mot de passe), sans
+  // rien derriere soi dans la pile.
+  function leaveAuth() {
+    if (router.canGoBack()) router.back()
+    else router.replace('/(tabs)')
+  }
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -22,7 +35,10 @@ export default function RegisterScreen() {
     const { error: authError } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } })
     setLoading(false)
     if (authError) setError(authError.message.includes('already registered') ? 'Un compte existe déjà avec cet email.' : 'Une erreur est survenue, veuillez réessayer.')
-    else { Alert.alert('Compte créé !', 'Vous pouvez maintenant vous connecter.'); router.replace('/(auth)/login') }
+    else {
+      Alert.alert('Compte créé !', 'Vous pouvez maintenant vous connecter.')
+      router.replace({ pathname: '/(auth)/login', params: redirect ? { redirect } : {} } as Href)
+    }
   }
 
   return (
@@ -30,6 +46,9 @@ export default function RegisterScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.kav}>
         <ScrollView>
           <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:1}} style={s.hero}>
+            <TouchableOpacity style={s.backBtn} onPress={leaveAuth} accessibilityLabel="Revenir au catalogue">
+              <Ionicons name="arrow-back" size={22} color="#fff" />
+            </TouchableOpacity>
             <Text style={s.logo}>FENUASIM</Text>
             <Text style={s.heroSub}>Creez votre compte</Text>
           </LinearGradient>
@@ -67,6 +86,7 @@ const s = StyleSheet.create({
   safe:{flex:1,backgroundColor:'#fff'},
   kav:{flex:1},
   hero:{padding:40,paddingTop:60,alignItems:'center'},
+  backBtn:{position:'absolute',top:16,left:16,width:40,height:40,borderRadius:20,alignItems:'center',justifyContent:'center',backgroundColor:'rgba(255,255,255,0.18)'},
   logo:{color:'#fff',fontSize:28,fontWeight:'800',letterSpacing:1},
   heroSub:{color:'rgba(255,255,255,0.85)',fontSize:14,marginTop:8},
   form:{padding:24,backgroundColor:'#fff'},

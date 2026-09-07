@@ -10,9 +10,19 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { COLORS } from '../../constants/theme'
 import { INSURANCE_PRODUCTS } from '../../constants/insurance'
+import { useSession } from '../../hooks/useSession'
+import { requireAuth } from '../../lib/authGate'
 
 export default function InsuranceTab() {
   const router = useRouter()
+  const { session, isGuest } = useSession()
+
+  // Les garanties et les prix restent visibles sans compte ; seule la
+  // souscription, qui cree un dossier nominatif chez AVA, en demande un.
+  function goToForm() {
+    if (!requireAuth(router, session, '/insurance/form')) return
+    router.push('/insurance/form')
+  }
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -46,11 +56,12 @@ export default function InsuranceTab() {
       </ScrollView>
 
       <View style={s.ctaBar}>
-        <TouchableOpacity style={s.ctaWrap} onPress={() => router.push('/insurance/form')}>
+        <TouchableOpacity style={s.ctaWrap} onPress={goToForm}>
           <LinearGradient colors={['#D251D8', '#FD7F3C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.cta}>
             <Text style={s.ctaTxt}>Obtenir mon devis</Text>
           </LinearGradient>
         </TouchableOpacity>
+        {isGuest && <Text style={s.ctaHint}>Un compte est demandé au moment de souscrire.</Text>}
       </View>
     </SafeAreaView>
   )
@@ -76,4 +87,5 @@ const s = StyleSheet.create({
   ctaWrap: { borderRadius: 14, overflow: 'hidden' },
   cta: { padding: 16, alignItems: 'center' },
   ctaTxt: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  ctaHint: { textAlign: 'center', fontSize: 12, color: COLORS.textMuted, marginTop: 8 },
 })

@@ -8,6 +8,7 @@ import { COLORS } from '../../constants/theme'
 import { useUserData } from '../../hooks/useUserData'
 import { supabase } from '../../lib/supabase'
 import { useCurrency, CurrencyCode } from '../../lib/currency'
+import { useSession } from '../../hooks/useSession'
 import dayjs from 'dayjs'
 
 // Noms produits reels observes en base (product_type) -> libelle lisible.
@@ -27,6 +28,7 @@ export default function AccountScreen() {
   const router = useRouter()
   const { email, insurances, loading } = useUserData()
   const { currency, setCurrency } = useCurrency()
+  const { isGuest, loading: sessionLoading } = useSession()
   const [fullName, setFullName] = useState<string | null>(null)
 
   useEffect(() => { loadProfile() }, [])
@@ -46,10 +48,108 @@ export default function AccountScreen() {
         style: 'destructive',
         onPress: async () => {
           await supabase.auth.signOut()
-          router.replace('/(auth)/login')
+          // L'application reste consultable sans compte : on revient a l'accueil
+          // visiteur plutot que de renvoyer sur un ecran de connexion sans issue.
+          router.replace('/(tabs)')
         },
       },
     ])
+  }
+
+  // L'onglet Compte est desormais atteignable sans etre connecte : il devient
+  // alors la porte d'entree vers la connexion, au lieu d'afficher un profil vide.
+  if (sessionLoading) {
+    return (
+      <SafeAreaView style={[s.safe, { justifyContent: 'center' }]} edges={['top']}>
+        <ActivityIndicator size="large" color={COLORS.violet} />
+      </SafeAreaView>
+    )
+  }
+
+  if (isGuest) {
+    return (
+      <SafeAreaView style={s.safe} edges={['top']}>
+        <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:1}} style={s.hero}>
+          <View style={s.heroRow}>
+            <View style={s.avatar}>
+              <Ionicons name="person-outline" size={22} color="#fff" />
+            </View>
+            <View style={{flex:1}}>
+              <Text style={s.heroName}>Mon compte</Text>
+              <Text style={s.heroEmail}>Vous n'êtes pas connecté</Text>
+            </View>
+          </View>
+        </LinearGradient>
+
+        <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
+          <View style={s.card}>
+            <Text style={s.guestTitle}>Créez votre compte FenuaSIM</Text>
+            <Text style={s.guestDesc}>
+              Parcourir les forfaits ne demande aucun compte. Il en faut un pour acheter une eSIM,
+              la retrouver et la recharger.
+            </Text>
+            {[
+              'Recevoir et installer vos eSIM',
+              'Suivre votre consommation en temps réel',
+              'Recharger un forfait en cours',
+              'Souscrire une assurance voyage',
+            ].map((f) => (
+              <View key={f} style={s.guestRow}>
+                <Ionicons name="checkmark-circle" size={16} color={COLORS.violet} />
+                <Text style={s.guestRowTxt}>{f}</Text>
+              </View>
+            ))}
+
+            <TouchableOpacity style={s.guestCtaWrap} onPress={() => router.push('/(auth)/login')}>
+              <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.guestCta}>
+                <Text style={s.guestCtaTxt}>Se connecter</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.guestSecondary} onPress={() => router.push('/(auth)/register')}>
+              <Text style={s.guestSecondaryTxt}>Créer un compte</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity style={s.newEsimCta} onPress={() => router.push('/(tabs)/explore')}>
+            <View style={[s.actionIcon,{backgroundColor:'rgba(210,81,216,0.1)'}]}>
+              <Ionicons name="hardware-chip-outline" size={20} color={COLORS.violet} />
+            </View>
+            <Text style={s.newEsimCtaTxt}>Voir les forfaits eSIM</Text>
+            <Ionicons name="chevron-forward" size={18} color="#ccc" />
+          </TouchableOpacity>
+
+          <Text style={s.secTitle}>Préférences</Text>
+          <View style={s.card}>
+            <View style={[s.profileRow,{borderBottomWidth:0}]}>
+              <View style={s.simIcon}>
+                <Ionicons name="pricetags-outline" size={20} color={COLORS.violet} />
+              </View>
+              <Text style={[s.profileRowTxt,{flex:1}]}>Devise d'affichage</Text>
+              <View style={s.currencyToggle}>
+                {(['XPF', 'EUR'] as CurrencyCode[]).map((c) => (
+                  <TouchableOpacity key={c} style={[s.currencyChip, currency === c && s.currencyChipSel]} onPress={() => setCurrency(c)}>
+                    <Text style={[s.currencyChipTxt, currency === c && s.currencyChipTxtSel]}>{c}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
+
+          <Text style={s.secTitle}>Aide</Text>
+          <View style={s.card}>
+            <TouchableOpacity style={[s.profileRow,{borderBottomWidth:0}]} onPress={() => router.push('/support')}>
+              <View style={s.simIcon}>
+                <Ionicons name="headset-outline" size={20} color={COLORS.violet} />
+              </View>
+              <Text style={s.profileRowTxt}>Support</Text>
+              <Ionicons name="chevron-forward" size={18} color="#ccc" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ height: 24 }} />
+        </ScrollView>
+      </SafeAreaView>
+    )
   }
 
   return (
@@ -221,6 +321,15 @@ const s = StyleSheet.create({
   heroName:{color:'#fff',fontSize:16,fontWeight:'800'},
   heroEmail:{color:'rgba(255,255,255,0.8)',fontSize:12,marginTop:2},
   scroll:{flex:1,padding:16},
+  guestTitle:{fontSize:17,fontWeight:'800',color:COLORS.text,marginBottom:6},
+  guestDesc:{fontSize:13,color:COLORS.textMuted,lineHeight:19,marginBottom:14},
+  guestRow:{flexDirection:'row',alignItems:'center',gap:8,marginBottom:8},
+  guestRowTxt:{flex:1,fontSize:13,color:COLORS.text},
+  guestCtaWrap:{borderRadius:14,overflow:'hidden',marginTop:12},
+  guestCta:{padding:15,alignItems:'center'},
+  guestCtaTxt:{color:'#fff',fontSize:15,fontWeight:'800'},
+  guestSecondary:{marginTop:10,padding:13,alignItems:'center',borderRadius:14,borderWidth:1.5,borderColor:COLORS.violet},
+  guestSecondaryTxt:{color:COLORS.violet,fontSize:15,fontWeight:'800'},
   secTitle:{fontSize:16,fontWeight:'700',color:COLORS.text,marginBottom:12,marginTop:4},
   secTitleMuted:{fontSize:12,fontWeight:'700',color:'#bbb',textTransform:'uppercase',letterSpacing:0.3,marginBottom:8,marginTop:20},
   deleteAccountRow:{paddingVertical:10},

@@ -339,16 +339,20 @@ function RootLayoutInner() {
     if (!loading && minTimeDone && showSplash && !splashExiting) setSplashExiting(true)
   }, [loading, minTimeDone, showSplash, splashExiting])
 
+  // Plus de mur d'authentification a l'entree : un visiteur non connecte accede
+  // au catalogue et aux prix, et n'est invite a creer un compte qu'au moment ou
+  // il achete (cf. lib/authGate). Seule la recuperation de mot de passe reste
+  // une redirection forcee, car la session issue du lien de recuperation ne
+  // doit servir qu'a changer le mot de passe.
+  // Les ecrans de connexion et d'inscription decident eux-memes ou aller apres
+  // succes (parametre `redirect`) : un garde global qui renverrait vers
+  // /(tabs) des l'apparition de la session ecraserait ce retour.
   useEffect(() => {
     if (loading || showSplash || !currencyConfirmed) return
-    const inAuth = segments[0] === '(auth)'
     if (isPasswordRecovery) {
       const current: string[] = segments
       if (current[1] !== 'reset-password') router.replace('/(auth)/reset-password')
-      return
     }
-    if (!session && !inAuth) router.replace('/(auth)/login')
-    if (session && inAuth) router.replace('/(tabs)')
   }, [session, loading, showSplash, currencyConfirmed, segments, isPasswordRecovery])
 
   if (showSplash || loading) {
