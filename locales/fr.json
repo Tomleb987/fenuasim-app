@@ -1,0 +1,9 @@
+{
+  "ios": {
+    "CFBundleDisplayName": "FenuaSIM",
+    "CFBundleName": "FenuaSIM"
+  },
+  "android": {
+    "app_name": "FenuaSIM"
+  }
+}
