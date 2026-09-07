@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { Platform } from 'react-native'
 import * as SecureStore from 'expo-secure-store'
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!
@@ -10,9 +11,18 @@ const ExpoSecureStoreAdapter = {
   removeItem: (key: string) => SecureStore.deleteItemAsync(key),
 }
 
+// expo-secure-store n'existe que sur iOS et Android : il s'appuie sur le
+// Keychain et le Keystore, que le navigateur n'expose pas. Appele sur web, il
+// echoue des le premier acces a la session
+// ("getValueWithKeyAsync is not a function") et l'application ne demarre pas.
+// On laisse alors supabase-js prendre son stockage par defaut (localStorage).
+// Le web ne sert qu'a tester un parcours dans un navigateur, il n'est pas
+// distribue : c'est aussi pour cela qu'il n'a pas besoin du Keychain.
+const authStorage = Platform.OS === 'web' ? undefined : ExpoSecureStoreAdapter
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: ExpoSecureStoreAdapter,
+    storage: authStorage,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
