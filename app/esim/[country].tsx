@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, FlatList, Modal, ScrollView } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, FlatList, Modal, ScrollView, ImageBackground } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { supabase } from '../../lib/supabase'
-import { COLORS } from '../../constants/theme'
+import { COLORS, RADIUS, SHADOW, TYPO } from '../../constants/theme'
+import { destinationImageUrl } from '../../lib/destinationImage'
 import { getFR } from '../../lib/regionNames'
 import { getPlanType, getPlanTypeLabel, getPlanTypeIcon, parseVoiceSmsVolume, INTERNET_ONLY_CAPTION, INTERNET_ONLY_EXPLANATION, PlanCoverageType } from '../../hooks/usePackageInfo'
 import { useCurrency } from '../../lib/currency'
@@ -62,6 +63,8 @@ function formatNetworkEntry(entry: string): string {
 
 type DataFilter = 'all' | 'low' | 'high' | 'unlimited'
 type DurationFilter = 'all' | 'short' | 'medium' | 'long'
+const GRID_FILLER = { id: '__filler__' } as Pkg
+
 type TypeFilter = 'all' | 'internet' | 'full'
 
 function matchesTypeFilter(t: PlanCoverageType, f: TypeFilter): boolean {
@@ -144,6 +147,14 @@ export default function CountryDetail() {
     })
   }, [plans, dataFilter, durationFilter, typeFilter])
 
+  // En grille a 2 colonnes, une derniere ligne a un seul element voit sa carte
+  // s'etirer sur toute la largeur (flex: 1 sans voisin) et rompre l'alignement.
+  // On complete donc avec un element fantome, rendu comme un espace vide.
+  const gridPlans = useMemo(
+    () => (filteredPlans.length % 2 === 1 ? [...filteredPlans, GRID_FILLER] : filteredPlans),
+    [filteredPlans]
+  )
+
   const showTypeFilter = useMemo(() => new Set(plans.map(getPlanType)).size > 1, [plans])
 
   const sel = plans.find(p => p.id === selected)
@@ -182,6 +193,19 @@ export default function CountryDetail() {
     <SafeAreaView style={s.safe} edges={['top']}>
 
       <LinearGradient colors={grad} style={s.hero}>
+        {/* Photo de la destination quand la banque en a une (53,5 % des slugs
+            actifs). Le degrade par region reste dessous : un slug non couvert
+            garde donc un hero colore plutot qu'un aplat gris. */}
+        <ImageBackground
+          source={{ uri: destinationImageUrl(String(slug), 900, 480) ?? undefined }}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        >
+          <LinearGradient
+            colors={['rgba(35,5,45,0.55)', 'rgba(35,5,45,0.28)', 'rgba(35,5,45,0.52)']}
+            style={StyleSheet.absoluteFill}
+          />
+        </ImageBackground>
         <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color="#fff" />
         </TouchableOpacity>
@@ -245,8 +269,10 @@ export default function CountryDetail() {
       ) : (
         <FlatList
           style={s.forfaitsPage}
-          data={filteredPlans}
+          data={gridPlans}
           keyExtractor={p => p.id}
+          numColumns={2}
+          columnWrapperStyle={{ gap: 10 }}
           contentContainerStyle={{ paddingBottom: 170 }}
           initialNumToRender={12}
           windowSize={7}
@@ -289,25 +315,31 @@ export default function CountryDetail() {
             ) : null
           }
           renderItem={({ item: p }) => {
+            if (p.id === GRID_FILLER.id) return <View style={s.planFiller} />
             const planType = getPlanType(p)
             const volume = parseVoiceSmsVolume(p.name)
             const isSel = selected === p.id
             return (
               <TouchableOpacity
-                style={[s.planRow, isSel && s.planRowSel]}
+                style={[s.planCard, isSel && s.planCardSel]}
                 onPress={() => setSelected(p.id)}
+                activeOpacity={0.85}
               >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                  <Ionicons name={isSel ? 'radio-button-on' : 'radio-button-off'} size={20} color={isSel ? COLORS.violet : '#ccc'} />
-                  <Text style={s.planRowData}>{getDataLabel(p)}</Text>
-                  <Text style={s.planRowDuration}>{getDurationLabel(p)}</Text>
-                  <Text style={s.planRowPrice}>{formatXpf(p.final_price_xpf)}</Text>
+                <View style={s.planCardHead}>
+                  <Text style={s.planCardData}>{getDataLabel(p)}</Text>
+                  {isSel && (
+                    <View style={s.planCheck}>
+                      <Ionicons name="checkmark" size={12} color="#fff" />
+                    </View>
+                  )}
                 </View>
-                <View style={s.planRowTypeWrap}>
-                  <Ionicons name={getPlanTypeIcon(planType)} size={12} color={COLORS.violet} />
-                  <Text style={s.planRowTypeTxt}>{getPlanTypeLabel(planType, volume)}</Text>
-                  {planType === 'internet' && <Text style={s.planRowCaption}>{INTERNET_ONLY_CAPTION}</Text>}
+                <Text style={s.planCardDuration}>{getDurationLabel(p)}</Text>
+                <View style={s.planCardTypeWrap}>
+                  <Ionicons name={getPlanTypeIcon(planType)} size={13} color={COLORS.violet} />
+                  <Text style={s.planCardTypeTxt}>{getPlanTypeLabel(planType, volume)}</Text>
                 </View>
+                {planType === 'internet' && <Text style={s.planCardCaption}>{INTERNET_ONLY_CAPTION}</Text>}
+                <Text style={s.planCardPrice}>{formatXpf(p.final_price_xpf)}</Text>
               </TouchableOpacity>
             )
           }}
@@ -423,10 +455,10 @@ export default function CountryDetail() {
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
-  hero: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  backBtn: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, width: 34, height: 34, justifyContent: 'center', alignItems: 'center' },
+  hero: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 22, flexDirection: 'row', alignItems: 'center', gap: 12, overflow: 'hidden' },
+  backBtn: { backgroundColor: 'rgba(255,255,255,0.26)', borderRadius: 20, width: 38, height: 38, justifyContent: 'center', alignItems: 'center' },
   heroContent: { flex: 1 },
-  heroTitle: { color: '#fff', fontSize: 20, fontWeight: '800' },
+  heroTitle: { color: '#fff', ...TYPO.screenTitle },
   heroSub: { color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: 3 },
   tabs: { backgroundColor: '#fff', flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
   tabBtn: { flex: 1, paddingVertical: 10, alignItems: 'center' },
@@ -448,14 +480,21 @@ const s = StyleSheet.create({
   filterChipTxt: { fontSize: 12, fontWeight: '600', color: '#888' },
   filterChipTxtSel: { color: COLORS.violet },
 
-  planRow: { backgroundColor: '#fff', borderRadius: 14, paddingVertical: 13, paddingHorizontal: 14, marginBottom: 8, borderWidth: 1.5, borderColor: COLORS.border },
-  planRowSel: { borderColor: COLORS.violet, backgroundColor: 'rgba(210,81,216,0.05)' },
-  planRowData: { fontSize: 14, fontWeight: '700', color: COLORS.text, width: 72 },
-  planRowDuration: { fontSize: 13, color: COLORS.textMuted, flex: 1 },
-  planRowPrice: { fontSize: 14, fontWeight: '800', color: COLORS.violet },
-  planRowTypeWrap: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 5, marginTop: 6, marginLeft: 30 },
-  planRowTypeTxt: { fontSize: 11, fontWeight: '700', color: COLORS.violet },
-  planRowCaption: { fontSize: 11, color: COLORS.textMuted },
+  // Grille 2 colonnes : flex 1 plutot qu'une largeur en pourcentage, pour que
+  // l'ecart soit gere par columnWrapperStyle et reste constant quel que soit
+  // l'ecran. minHeight garde les deux cartes d'une meme ligne alignees quand
+  // l'une porte une legende "internet uniquement" et pas l'autre.
+  planCard: { flex: 1, minHeight: 132, backgroundColor: '#fff', borderRadius: RADIUS.lg, padding: 14, marginBottom: 10, borderWidth: 1.5, borderColor: 'transparent', ...SHADOW.card },
+  planCardSel: { borderColor: COLORS.violet, backgroundColor: 'rgba(210,81,216,0.05)' },
+  planFiller: { flex: 1 },
+  planCardHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  planCardData: { flex: 1, fontSize: 20, fontWeight: '800', color: COLORS.text, letterSpacing: -0.3 },
+  planCheck: { width: 20, height: 20, borderRadius: 10, backgroundColor: COLORS.violet, alignItems: 'center', justifyContent: 'center' },
+  planCardDuration: { fontSize: 13, color: COLORS.textMuted, marginTop: 2 },
+  planCardTypeWrap: { flexDirection: 'row', alignItems: 'flex-start', gap: 5, marginTop: 9 },
+  planCardTypeTxt: { flex: 1, fontSize: 11.5, fontWeight: '700', color: COLORS.violet, lineHeight: 15 },
+  planCardCaption: { fontSize: 11, color: COLORS.textMuted, marginTop: 3, lineHeight: 14 },
+  planCardPrice: { fontSize: 19, fontWeight: '800', color: COLORS.violet, marginTop: 10 },
 
   recap: { backgroundColor: '#fff', borderRadius: 14, padding: 14, marginTop: 6 },
   recapTitle: { fontSize: 13, fontWeight: '700', color: COLORS.text, marginBottom: 8 },
@@ -476,7 +515,7 @@ const s = StyleSheet.create({
   stepNum: { width: 20, height: 20, borderRadius: 10, backgroundColor: COLORS.violet, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   stepNumTxt: { color: '#fff', fontSize: 10, fontWeight: '800' },
 
-  ctaBar: { backgroundColor: '#fff', padding: 12, borderTopWidth: 1, borderTopColor: '#F0F0F0' },
+  ctaBar: { backgroundColor: '#fff', padding: 14, borderTopWidth: 1, borderTopColor: '#F0F0F0', ...SHADOW.raised },
   selectionSummary: { marginBottom: 8, paddingHorizontal: 2 },
   selectionSummaryTitle: { fontSize: 10, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4 },
   selectionSummaryTxt: { fontSize: 13, fontWeight: '700', color: COLORS.text, marginTop: 2 },
