@@ -9,7 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import { COLORS, EUR_TO_XPF } from '../../constants/theme'
+import { COLORS, RADIUS, SHADOW, TYPO, EUR_TO_XPF } from '../../constants/theme'
 import { useCurrency } from '../../lib/currency'
 import { supabase } from '../../lib/supabase'
 import {
@@ -584,7 +584,7 @@ const s = StyleSheet.create({
   hero: { padding: 20, paddingTop: 16, paddingBottom: 20 },
   backBtn: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, width: 36, height: 36, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
   heroLabel: { color: 'rgba(255,255,255,0.75)', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
-  heroTitle: { color: '#fff', fontSize: 22, fontWeight: '800', marginTop: 4 },
+  heroTitle: { color: '#fff', ...TYPO.screenTitle, marginTop: 4 },
   stepDots: { flexDirection: 'row', gap: 6, marginTop: 14 },
   stepDot: { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.3)' },
   stepDotActive: { backgroundColor: '#fff' },
@@ -600,7 +600,7 @@ const s = StyleSheet.create({
   inputErr: { borderColor: '#B00020' },
   errTxt: { fontSize: 12, color: '#B00020', marginTop: 4 },
   row2: { flexDirection: 'row', gap: 10 },
-  productCard: { backgroundColor: '#fff', borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 1.5, borderColor: 'transparent', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
+  productCard: { backgroundColor: '#fff', borderRadius: RADIUS.lg, padding: 14, marginBottom: 10, borderWidth: 1.5, borderColor: 'transparent', ...SHADOW.card },
   productCardSelected: { borderColor: COLORS.violet },
   productCardHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   expandBtn: { width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(210,81,216,0.1)', justifyContent: 'center', alignItems: 'center' },
@@ -617,27 +617,27 @@ const s = StyleSheet.create({
   chipTxt: { fontSize: 13, fontWeight: '600', color: COLORS.text },
   chipTxtSm: { fontSize: 12, fontWeight: '600', color: COLORS.text },
   chipTxtSelected: { color: COLORS.violet },
-  companionCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 10, gap: 8 },
+  companionCard: { backgroundColor: '#fff', borderRadius: RADIUS.lg, padding: 14, marginBottom: 10, gap: 8 },
   companionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   companionTitle: { fontSize: 13, fontWeight: '700', color: COLORS.text },
   addBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1.5, borderColor: '#EDEDED', borderStyle: 'dashed', borderRadius: 12, paddingVertical: 14, marginTop: 4 },
   addBtnTxt: { color: COLORS.violet, fontWeight: '700', fontSize: 13 },
-  optionCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 10 },
+  optionCard: { backgroundColor: '#fff', borderRadius: RADIUS.lg, padding: 14, marginBottom: 10 },
   optionRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   optionLabel: { fontSize: 13, fontWeight: '700', color: COLORS.text },
   optionDesc: { fontSize: 11, color: COLORS.textMuted, marginTop: 2, marginBottom: 6 },
   promoBtn: { backgroundColor: COLORS.violet, borderRadius: 12, paddingHorizontal: 16, justifyContent: 'center', alignItems: 'center' },
   promoBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 13 },
   promoValid: { fontSize: 12, color: COLORS.success, marginTop: 6, fontWeight: '600' },
-  quoteBox: { backgroundColor: '#fff', borderRadius: 16, padding: 18, alignItems: 'center', marginTop: 12, marginBottom: 8 },
+  quoteBox: { backgroundColor: '#fff', borderRadius: RADIUS.md, padding: 18, alignItems: 'center', marginTop: 12, marginBottom: 8 },
   quoteLabel: { fontSize: 12, color: COLORS.textMuted, fontWeight: '600', textTransform: 'uppercase' },
   quoteValue: { fontSize: 28, fontWeight: '800', color: COLORS.violet, marginTop: 4 },
   quoteSub: { fontSize: 12, color: COLORS.textMuted, marginTop: 4 },
-  recapCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 4 },
+  recapCard: { backgroundColor: '#fff', borderRadius: RADIUS.lg, padding: 14, marginBottom: 4 },
   recapRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: '#f0f0f0' },
   recapLabel: { fontSize: 12, color: COLORS.textMuted },
   recapValue: { fontSize: 12, fontWeight: '700', color: COLORS.text, flexShrink: 1, textAlign: 'right' },
-  noteBox: { flexDirection: 'row', gap: 8, backgroundColor: '#F5F4F2', borderRadius: 12, padding: 12, marginTop: 4 },
+  noteBox: { flexDirection: 'row', gap: 8, backgroundColor: '#F5F4F2', borderRadius: RADIUS.md, padding: 12, marginTop: 4 },
   noteTxt: { flex: 1, fontSize: 11.5, color: COLORS.textMuted, lineHeight: 16 },
   ctaBar: { backgroundColor: '#fff', padding: 16, borderTopWidth: 1, borderTopColor: COLORS.border },
   ctaWrap: { borderRadius: 14, overflow: 'hidden' },

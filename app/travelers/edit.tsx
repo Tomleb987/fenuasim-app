@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
-import { COLORS } from '../../constants/theme'
+import { COLORS, RADIUS, TYPO } from '../../constants/theme'
 import { useTravelers } from '../../hooks/useTravelers'
 
 export default function EditTraveler() {
@@ -117,9 +117,9 @@ export default function EditTraveler() {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
   loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  hero: { padding: 20, paddingBottom: 24 },
+  hero: { padding: 20, paddingBottom: 24, borderBottomLeftRadius: RADIUS.xl, borderBottomRightRadius: RADIUS.xl, overflow: 'hidden' },
   backBtn: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, width: 36, height: 36, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  heroTitle: { color: '#fff', fontSize: 22, fontWeight: '800' },
+  heroTitle: { color: '#fff', ...TYPO.screenTitle },
   form: { padding: 20 },
   label: { fontSize: 12, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 8 },
   inputWrap: { backgroundColor: COLORS.bg, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, borderWidth: 1, borderColor: COLORS.border, marginBottom: 16 },

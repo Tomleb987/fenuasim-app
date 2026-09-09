@@ -14,7 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import { COLORS } from '../../constants/theme'
+import { COLORS, RADIUS, SHADOW } from '../../constants/theme'
 import { buildWhatsappUrl } from '../../constants/support'
 import { Linking } from 'react-native'
 
@@ -273,13 +273,13 @@ const s = StyleSheet.create({
   heroSub: { color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: 2 },
   scroll: { flex: 1 },
   bubble: { maxWidth: '85%', borderRadius: 16, padding: 12, marginBottom: 10 },
-  bubbleAssistant: { backgroundColor: '#fff', alignSelf: 'flex-start', borderBottomLeftRadius: 4, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
+  bubbleAssistant: { backgroundColor: '#fff', alignSelf: 'flex-start', borderBottomLeftRadius: 4, ...SHADOW.card },
   bubbleUser: { backgroundColor: COLORS.violet, alignSelf: 'flex-end', borderBottomRightRadius: 4 },
   bubbleTxtAssistant: { fontSize: 14, color: COLORS.text, lineHeight: 20 },
   bubbleTxtUser: { fontSize: 14, color: '#fff', lineHeight: 20 },
   link: { color: COLORS.violet, fontWeight: '700', textDecorationLine: 'underline' },
   typingRow: { flexDirection: 'row', gap: 4, paddingVertical: 4, paddingHorizontal: 2 },
-  errorBox: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, backgroundColor: '#FDECEA', borderRadius: 12, padding: 12, marginTop: 4 },
+  errorBox: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, backgroundColor: '#FDECEA', borderRadius: RADIUS.md, padding: 12, marginTop: 4 },
   errorTxt: { fontSize: 12, color: '#B00020', flex: 1 },
   errorLink: { fontSize: 12, fontWeight: '700', color: COLORS.violet },
   inputBar: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, padding: 12, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: COLORS.border },

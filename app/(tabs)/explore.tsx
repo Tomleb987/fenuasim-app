@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { supabase } from '../../lib/supabase'
-import { COLORS } from '../../constants/theme'
+import { COLORS, RADIUS, SHADOW } from '../../constants/theme'
 import { getFR } from '../../lib/regionNames'
 import { useCurrency } from '../../lib/currency'
 
@@ -214,7 +214,7 @@ const s = StyleSheet.create({
   topLogo:{fontSize:20,fontWeight:'800',color:COLORS.violet},
   topCount:{fontSize:13,color:COLORS.textMuted,fontWeight:'600'},
   searchSection:{backgroundColor:'#fff',paddingHorizontal:18,paddingBottom:12},
-  searchBox:{flexDirection:'row',alignItems:'center',gap:10,backgroundColor:COLORS.bg,borderRadius:12,paddingHorizontal:14,paddingVertical:11,marginBottom:10},
+  searchBox:{flexDirection:'row',alignItems:'center',gap:10,backgroundColor:COLORS.bg,borderRadius:RADIUS.md,paddingHorizontal:14,paddingVertical:11,marginBottom:10},
   searchInput:{flex:1,fontSize:14,color:'#333'},
   filterRow:{flexDirection:'row',gap:8},
   filterBtn:{paddingHorizontal:14,paddingVertical:6,borderRadius:20,borderWidth:1.5,borderColor:COLORS.border,backgroundColor:'#fff'},
@@ -225,7 +225,7 @@ const s = StyleSheet.create({
   loaderTxt:{fontSize:14,color:COLORS.textMuted},
   scroll:{flex:1,padding:16},
   secTitle:{fontSize:15,fontWeight:'700',color:COLORS.text,marginBottom:10},
-  card:{backgroundColor:'#fff',borderRadius:16,padding:16,marginBottom:10,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2,borderWidth:1,borderColor:COLORS.border},
+  card:{backgroundColor:'#fff',borderRadius:16,padding:16,marginBottom:10,...SHADOW.card,borderWidth:1,borderColor:COLORS.border},
   cardTop:{borderColor:'rgba(210,81,216,0.25)'},
   cardHead:{flexDirection:'row',justifyContent:'space-between',alignItems:'flex-start',marginBottom:12},
   cardName:{fontSize:15,fontWeight:'700',color:COLORS.text},

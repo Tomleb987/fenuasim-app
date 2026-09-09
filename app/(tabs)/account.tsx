@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import { COLORS } from '../../constants/theme'
+import { COLORS, RADIUS, SHADOW } from '../../constants/theme'
 import { useUserData } from '../../hooks/useUserData'
 import { supabase } from '../../lib/supabase'
 import { useCurrency, CurrencyCode } from '../../lib/currency'
@@ -314,7 +314,7 @@ export default function AccountScreen() {
 
 const s = StyleSheet.create({
   safe:{flex:1,backgroundColor:COLORS.bg},
-  hero:{padding:20,paddingBottom:24},
+  hero:{padding:20,paddingBottom:24,borderBottomLeftRadius:RADIUS.xl,borderBottomRightRadius:RADIUS.xl,overflow:'hidden'},
   heroRow:{flexDirection:'row',alignItems:'center',gap:14},
   avatar:{width:52,height:52,borderRadius:26,backgroundColor:'rgba(255,255,255,0.25)',justifyContent:'center',alignItems:'center'},
   avatarTxt:{color:'#fff',fontSize:22,fontWeight:'800'},
@@ -334,7 +334,7 @@ const s = StyleSheet.create({
   secTitleMuted:{fontSize:12,fontWeight:'700',color:'#bbb',textTransform:'uppercase',letterSpacing:0.3,marginBottom:8,marginTop:20},
   deleteAccountRow:{paddingVertical:10},
   deleteAccountTxt:{fontSize:13,fontWeight:'600',color:'#B00020'},
-  card:{backgroundColor:'#fff',borderRadius:16,padding:16,marginBottom:10,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
+  card:{backgroundColor:'#fff',borderRadius:16,padding:16,marginBottom:10,...SHADOW.card},
   profileRow:{flexDirection:'row',alignItems:'center',gap:12,paddingVertical:10,borderBottomWidth:0.5,borderBottomColor:'#f5f5f5'},
   profileRowTxt:{flex:1,fontSize:14,fontWeight:'600',color:COLORS.text},
   currencyToggle:{flexDirection:'row',backgroundColor:COLORS.bg,borderRadius:10,padding:3,gap:2},
@@ -355,7 +355,7 @@ const s = StyleSheet.create({
   pillExpiredTxt:{color:COLORS.textMuted},
   installBtn:{flexDirection:'row',alignItems:'center',gap:6,marginTop:10,paddingTop:10,borderTopWidth:0.5,borderTopColor:'#f0f0f0'},
   installTxt:{color:COLORS.violet,fontSize:13,fontWeight:'600'},
-  newEsimCta:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:'#fff',borderRadius:16,padding:14,marginBottom:16,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
+  newEsimCta:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:'#fff',borderRadius:16,padding:14,marginBottom:16,...SHADOW.card},
   newEsimCtaTxt:{flex:1,fontSize:14,fontWeight:'700',color:COLORS.text},
   actionIcon:{width:44,height:44,borderRadius:12,justifyContent:'center',alignItems:'center'},
 })

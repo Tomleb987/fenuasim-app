@@ -508,7 +508,7 @@ const s = StyleSheet.create({
   featTxt: { fontSize: 11, color: '#555' },
 
   infoPage: { flex: 1, padding: 16 },
-  infoCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 },
+  infoCard: { backgroundColor: '#fff', borderRadius: RADIUS.lg, padding: 14, ...SHADOW.card },
   infoSection: { fontSize: 11, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
   infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: '#f8f8f8' },
   infoTxt: { fontSize: 13, color: '#333', flex: 1, lineHeight: 18 },

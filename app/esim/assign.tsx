@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
-import { COLORS } from '../../constants/theme'
+import { COLORS, RADIUS, TYPO } from '../../constants/theme'
 import { useTravelers } from '../../hooks/useTravelers'
 import { useDevices } from '../../hooks/useDevices'
 import { useEsimAssignments } from '../../hooks/useEsimAssignments'
@@ -304,9 +304,9 @@ export default function AssignEsim() {
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
-  hero: { padding: 20, paddingBottom: 24 },
+  hero: { padding: 20, paddingBottom: 24, borderBottomLeftRadius: RADIUS.xl, borderBottomRightRadius: RADIUS.xl, overflow: 'hidden' },
   backBtn: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, width: 36, height: 36, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  heroTitle: { color: '#fff', fontSize: 22, fontWeight: '800' },
+  heroTitle: { color: '#fff', ...TYPO.screenTitle },
   heroSub: { color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: 8, fontWeight: '600' },
   stepDots: { flexDirection: 'row', gap: 6, marginTop: 14 },
   stepDot: { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.3)' },

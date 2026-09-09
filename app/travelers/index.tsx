@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import { COLORS } from '../../constants/theme'
+import { COLORS, RADIUS, SHADOW, TYPO } from '../../constants/theme'
 import { useTravelers } from '../../hooks/useTravelers'
 import { useDevices } from '../../hooks/useDevices'
 
@@ -86,16 +86,16 @@ export default function TravelersScreen() {
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
-  hero: { padding: 20, paddingBottom: 24 },
+  hero: { padding: 20, paddingBottom: 24, borderBottomLeftRadius: RADIUS.xl, borderBottomRightRadius: RADIUS.xl, overflow: 'hidden' },
   backBtn: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, width: 36, height: 36, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  heroTitle: { color: '#fff', fontSize: 22, fontWeight: '800' },
+  heroTitle: { color: '#fff', ...TYPO.screenTitle },
   loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   scroll: { flex: 1, padding: 16 },
   empty: { alignItems: 'center', padding: 30, backgroundColor: '#fff', borderRadius: 16, gap: 6 },
   emptyIcon: { width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(210,81,216,0.1)', justifyContent: 'center', alignItems: 'center', marginBottom: 6 },
   emptyTitle: { fontSize: 15, fontWeight: '700', color: COLORS.text },
   emptyTxt: { fontSize: 13, color: COLORS.textMuted, textAlign: 'center', lineHeight: 19 },
-  card: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 16, padding: 14, marginBottom: 10, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
+  card: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 16, padding: 14, marginBottom: 10, ...SHADOW.card },
   avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(210,81,216,0.12)', justifyContent: 'center', alignItems: 'center' },
   avatarTxt: { fontSize: 17, fontWeight: '800', color: COLORS.violet },
   cardName: { fontSize: 14, fontWeight: '700', color: COLORS.text },

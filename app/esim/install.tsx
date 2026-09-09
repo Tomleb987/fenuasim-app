@@ -19,7 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { supabase } from '../../lib/supabase'
-import { COLORS } from '../../constants/theme'
+import { COLORS, RADIUS, TYPO } from '../../constants/theme'
 import EsimInstallBlock, { EsimInstallData, hasInstallData } from '../../components/EsimInstallBlock'
 
 export default function EsimInstallScreen() {
@@ -93,9 +93,9 @@ export default function EsimInstallScreen() {
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
-  hero: { padding: 20, paddingBottom: 24 },
+  hero: { padding: 20, paddingBottom: 24, borderBottomLeftRadius: RADIUS.xl, borderBottomRightRadius: RADIUS.xl, overflow: 'hidden' },
   backBtn: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, width: 36, height: 36, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  heroTitle: { color: '#fff', fontSize: 22, fontWeight: '800' },
+  heroTitle: { color: '#fff', ...TYPO.screenTitle },
   heroSub: { color: 'rgba(255,255,255,0.85)', fontSize: 13, marginTop: 4 },
   scroll: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, gap: 10 },
@@ -103,6 +103,6 @@ const s = StyleSheet.create({
   centerTxt: { fontSize: 13, color: COLORS.textMuted, textAlign: 'center', lineHeight: 19 },
   retryBtn: { backgroundColor: COLORS.violet, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12, marginTop: 8 },
   retryTxt: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  helpBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: 'rgba(210,81,216,0.06)', borderRadius: 12, padding: 12 },
+  helpBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: 'rgba(210,81,216,0.06)', borderRadius: RADIUS.md, padding: 12 },
   helpTxt: { flex: 1, fontSize: 12, color: COLORS.text, lineHeight: 18 },
 })

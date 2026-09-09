@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { supabase } from '../../lib/supabase'
-import { COLORS } from '../../constants/theme'
+import { COLORS, RADIUS, SHADOW } from '../../constants/theme'
 import EsimInstallBlock, { hasInstallData } from '../../components/EsimInstallBlock'
 import { closeCheckoutBrowser } from '../../lib/checkout'
 
@@ -278,7 +278,7 @@ const s = StyleSheet.create({
   circle:{width:72,height:72,borderRadius:36,justifyContent:'center',alignItems:'center',marginBottom:16,alignSelf:'center'},
   title:{fontSize:22,fontWeight:'800',color:COLORS.text,textAlign:'center'},
   sub:{fontSize:14,color:'#888',marginTop:6,textAlign:'center',marginBottom:20},
-  infoBox:{backgroundColor:'#fff',borderRadius:16,padding:16,marginBottom:12,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
+  infoBox:{backgroundColor:'#fff',borderRadius:RADIUS.md,padding:16,marginBottom:12,...SHADOW.card},
   infoRow:{flexDirection:'row',alignItems:'center',gap:10,paddingVertical:9,borderBottomWidth:0.5,borderBottomColor:'#f5f5f5'},
   infoTxt:{fontSize:14,color:COLORS.text,fontWeight:'500'},
   techBox:{marginBottom:12},
@@ -291,7 +291,7 @@ const s = StyleSheet.create({
   ctaTxt:{color:'#fff',fontSize:15,fontWeight:'800'},
   ghost:{width:'100%',padding:14,alignItems:'center',marginTop:8},
   ghostTxt:{color:COLORS.textMuted,fontSize:14,fontWeight:'500'},
-  upsellBox:{backgroundColor:'#fff',borderRadius:16,padding:16,marginTop:4,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
+  upsellBox:{backgroundColor:'#fff',borderRadius:RADIUS.md,padding:16,marginTop:4,...SHADOW.card},
   upsellHead:{flexDirection:'row',alignItems:'center',gap:8,marginBottom:6},
   upsellTitle:{fontSize:15,fontWeight:'700',color:COLORS.text},
   upsellSub:{fontSize:13,color:'#888',lineHeight:19,marginBottom:14},

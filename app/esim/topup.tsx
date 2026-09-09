@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
-import { COLORS, EUR_TO_XPF } from '../../constants/theme'
+import { COLORS, RADIUS, SHADOW, EUR_TO_XPF } from '../../constants/theme'
 import { useCurrency } from '../../lib/currency'
 import { useEsimTopups } from '../../hooks/useEsimTopups'
 import { EsimTopupOption } from '../../types'
@@ -128,7 +128,7 @@ export default function EsimTopupScreen() {
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
-  hero: { padding: 20, paddingBottom: 24 },
+  hero: { padding: 20, paddingBottom: 24, borderBottomLeftRadius: RADIUS.xl, borderBottomRightRadius: RADIUS.xl, overflow: 'hidden' },
   backBtn: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, width: 36, height: 36, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
   heroTitle: { color: '#fff', fontSize: 20, fontWeight: '800' },
   heroSub: { color: 'rgba(255,255,255,0.85)', fontSize: 13, marginTop: 4 },
@@ -139,7 +139,7 @@ const s = StyleSheet.create({
   retryTxt: { color: '#fff', fontWeight: '700', fontSize: 14 },
   scroll: { flex: 1, padding: 16 },
   sectionLabel: { fontSize: 13, fontWeight: '700', color: COLORS.textMuted, marginBottom: 10, textTransform: 'uppercase' },
-  optionCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1.5, borderColor: 'transparent', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
+  optionCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: RADIUS.lg, padding: 14, marginBottom: 10, borderWidth: 1.5, borderColor: 'transparent', ...SHADOW.card },
   optionCardSelected: { borderColor: COLORS.violet },
   optionIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(210,81,216,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
   optionTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text },

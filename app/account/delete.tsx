@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import { COLORS } from '../../constants/theme'
+import { COLORS, RADIUS, TYPO } from '../../constants/theme'
 import { supabase } from '../../lib/supabase'
 
 type Step = 'info' | 'confirm'
@@ -148,9 +148,9 @@ export default function DeleteAccountScreen() {
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
-  hero: { padding: 20, paddingBottom: 24 },
+  hero: { padding: 20, paddingBottom: 24, borderBottomLeftRadius: RADIUS.xl, borderBottomRightRadius: RADIUS.xl, overflow: 'hidden' },
   backBtn: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, width: 36, height: 36, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  heroTitle: { color: '#fff', fontSize: 22, fontWeight: '800' },
+  heroTitle: { color: '#fff', ...TYPO.screenTitle },
   content: { padding: 24, flex: 1 },
   iconWrap: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#FDECEA', justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
   paragraph: { fontSize: 14, color: COLORS.textMuted, lineHeight: 21, marginBottom: 14 },
@@ -158,7 +158,7 @@ const s = StyleSheet.create({
   warningTitle: { fontSize: 15, color: COLORS.text, fontWeight: '600', lineHeight: 22, marginBottom: 24 },
   label: { fontSize: 12, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 8 },
   input: { backgroundColor: COLORS.bg, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, borderWidth: 1.5, borderColor: COLORS.border, fontSize: 16, fontWeight: '700', color: COLORS.text, marginBottom: 16, letterSpacing: 1 },
-  errorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: '#FDECEA', borderRadius: 10, padding: 12, marginBottom: 16 },
+  errorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: '#FDECEA', borderRadius: RADIUS.md, padding: 12, marginBottom: 16 },
   errorTxt: { flex: 1, fontSize: 13, color: '#B00020', lineHeight: 18 },
   deleteBtn: { backgroundColor: '#B00020', borderRadius: 14, padding: 16, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, marginTop: 8 },
   deleteBtnDisabled: { backgroundColor: '#e0a8ae' },

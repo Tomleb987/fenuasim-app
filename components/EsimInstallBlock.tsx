@@ -21,7 +21,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Image, Platform, Linking, Toa
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import * as Clipboard from 'expo-clipboard'
-import { COLORS } from '../constants/theme'
+import { COLORS, RADIUS, SHADOW } from '../constants/theme'
 
 export type EsimInstallData = {
   qr_code_url?: string | null
@@ -145,12 +145,12 @@ export default function EsimInstallBlock({ order }: { order: EsimInstallData }) 
 }
 
 const s = StyleSheet.create({
-  box: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
+  box: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, ...SHADOW.card },
   title: { fontSize: 15, fontWeight: '700', color: COLORS.text, marginBottom: 10 },
   ctaWrap: { borderRadius: 14, overflow: 'hidden' },
   cta: { padding: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' },
   ctaTxt: { color: '#fff', fontSize: 15, fontWeight: '800' },
-  manualBox: { backgroundColor: COLORS.bg, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: COLORS.border },
+  manualBox: { backgroundColor: COLORS.bg, borderRadius: RADIUS.md, padding: 14, borderWidth: 1, borderColor: COLORS.border },
   manualTitle: { fontSize: 13, fontWeight: '800', color: COLORS.text, marginBottom: 6 },
   manualIntro: { fontSize: 12, color: COLORS.textMuted, lineHeight: 18, marginBottom: 12 },
   manualHint: { fontSize: 11, color: COLORS.textMuted, lineHeight: 16, marginTop: 2 },

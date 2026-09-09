@@ -5,7 +5,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { supabase } from '../../lib/supabase'
-import { COLORS } from '../../constants/theme'
+import { COLORS, RADIUS, SHADOW, TYPO } from '../../constants/theme'
 import { useCurrency, toDisplayAmount, formatAmount, applyDiscountTo } from '../../lib/currency'
 import { validateEsimPromoCode } from '../../hooks/usePromoCode'
 import { openCheckout } from '../../lib/checkout'
@@ -180,19 +180,19 @@ export default function PaymentScreen() {
 
 const s = StyleSheet.create({
   safe:{flex:1,backgroundColor:COLORS.bg},
-  hero:{padding:20,paddingBottom:24},
+  hero:{padding:20,paddingBottom:24,borderBottomLeftRadius:RADIUS.xl,borderBottomRightRadius:RADIUS.xl,overflow:'hidden'},
   backBtn:{backgroundColor:'rgba(255,255,255,0.2)',borderRadius:20,width:36,height:36,justifyContent:'center',alignItems:'center',marginBottom:12},
-  heroTitle:{color:'#fff',fontSize:22,fontWeight:'800'},
+  heroTitle:{color:'#fff',...TYPO.screenTitle},
   heroSub:{color:'rgba(255,255,255,0.85)',fontSize:13,marginTop:4},
   content:{flex:1,padding:16},
-  summaryCard:{backgroundColor:'#fff',borderRadius:16,padding:16,marginBottom:12,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
+  summaryCard:{backgroundColor:'#fff',borderRadius:RADIUS.lg,padding:16,marginBottom:12,...SHADOW.card},
   summaryTitle:{fontSize:15,fontWeight:'700',color:COLORS.text,marginBottom:12},
   row:{flexDirection:'row',justifyContent:'space-between',paddingVertical:9,borderBottomWidth:0.5,borderBottomColor:'#f5f5f5'},
   rowLabel:{fontSize:13,color:COLORS.textMuted},
   rowVal:{fontSize:13,fontWeight:'600',color:COLORS.text},
   totalLabel:{fontSize:15,fontWeight:'700',color:COLORS.text},
   totalVal:{fontSize:20,fontWeight:'800',color:COLORS.violet},
-  promoCard:{backgroundColor:'#fff',borderRadius:16,padding:16,marginBottom:12,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
+  promoCard:{backgroundColor:'#fff',borderRadius:RADIUS.lg,padding:16,marginBottom:12,...SHADOW.card},
   promoLabel:{fontSize:12,fontWeight:'700',color:COLORS.textMuted,textTransform:'uppercase',letterSpacing:0.3,marginBottom:8},
   promoRow:{flexDirection:'row',gap:10},
   promoInput:{flex:1,backgroundColor:COLORS.bg,borderRadius:12,paddingHorizontal:14,paddingVertical:12,fontSize:14,color:COLORS.text,borderWidth:1,borderColor:COLORS.border},
@@ -200,9 +200,9 @@ const s = StyleSheet.create({
   promoBtnTxt:{color:'#fff',fontWeight:'700',fontSize:13},
   promoValid:{fontSize:12,color:COLORS.success,marginTop:8,fontWeight:'600'},
   promoInvalid:{fontSize:12,color:'#B00020',marginTop:8,fontWeight:'600'},
-  infoBox:{flexDirection:'row',alignItems:'flex-start',gap:10,backgroundColor:'rgba(210,81,216,0.06)',borderRadius:12,padding:12,marginBottom:12},
+  infoBox:{flexDirection:'row',alignItems:'flex-start',gap:10,backgroundColor:'rgba(210,81,216,0.06)',borderRadius:RADIUS.md,padding:12,marginBottom:12},
   infoTxt:{fontSize:13,color:COLORS.text,flex:1,lineHeight:20},
-  secureBox:{flexDirection:'row',alignItems:'center',gap:8,backgroundColor:'#E6F9F2',borderRadius:10,padding:10},
+  secureBox:{flexDirection:'row',alignItems:'center',gap:8,backgroundColor:'#E6F9F2',borderRadius:RADIUS.md,padding:10},
   secureTxt:{fontSize:13,color:COLORS.success,fontWeight:'600'},
   ctaBar:{backgroundColor:'#fff',padding:16,borderTopWidth:1,borderTopColor:COLORS.border},
   ctaWrap:{borderRadius:14,overflow:'hidden'},
