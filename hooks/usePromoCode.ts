@@ -20,7 +20,11 @@ export interface PromoCodeResult {
 
 export async function validateEsimPromoCode(code: string, priceXpf: number): Promise<PromoCodeResult> {
   try {
-    const { data, error } = await supabase.from('promo_codes').select('*').eq('code', code).single()
+    // Comparaison insensible a la casse : le champ de saisie force les
+    // majuscules, mais un code colle depuis un e-mail en minuscules etait
+    // rejete a tort. C'est aussi ce que fait create-checkout-mobile cote
+    // serveur, les deux validations doivent repondre pareil.
+    const { data, error } = await supabase.from('promo_codes').select('*').ilike('code', code).single()
 
     if (!error && data && data.applies_to === 'insurance') {
       return { isValid: false, discountedPriceXpf: priceXpf, error: 'Code promo invalide pour les eSIM' }
