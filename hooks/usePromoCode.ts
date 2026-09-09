@@ -10,6 +10,11 @@ import { EUR_TO_XPF } from '../constants/theme'
 export interface PromoCodeResult {
   isValid: boolean
   discountedPriceXpf: number
+  // Detail de la remise, pour pouvoir la rejouer sur le montant deja converti
+  // dans la devise d'affichage -- l'appliquer sur les XPF puis arrondir a
+  // l'euro superieur la faisait disparaitre sur les petits montants.
+  discountPercentage?: number | null
+  discountAmountEur?: number | null
   error?: string
 }
 
@@ -41,7 +46,12 @@ export async function validateEsimPromoCode(code: string, priceXpf: number): Pro
       // discount_amount est stocke en EUR cote site (ex: code "SAVE5EUR" = 5.00)
       discounted = Math.max(0, priceXpf - data.discount_amount * EUR_TO_XPF)
     }
-    return { isValid: true, discountedPriceXpf: discounted }
+    return {
+      isValid: true,
+      discountedPriceXpf: discounted,
+      discountPercentage: data.discount_percentage ?? null,
+      discountAmountEur: data.discount_amount ?? null,
+    }
   } catch {
     return { isValid: false, discountedPriceXpf: priceXpf, error: 'Erreur de connexion, veuillez réessayer.' }
   }

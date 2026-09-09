@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { COLORS } from '../../constants/theme'
-import { useCurrency } from '../../lib/currency'
+import { useCurrency, toDisplayAmount, formatAmount, applyDiscountTo } from '../../lib/currency'
 import { validateEsimPromoCode } from '../../hooks/usePromoCode'
 import { openCheckout } from '../../lib/checkout'
 
@@ -16,12 +16,12 @@ export default function PaymentScreen() {
   // superpose au bas de l'ecran. Sans cet inset, le bouton principal passe
   // partiellement sous la barre de gestes ou les 3 boutons.
   const insets = useSafeAreaInsets()
-  const { formatXpf } = useCurrency()
+  const { currency } = useCurrency()
   const [loading, setLoading] = useState(false)
   const [promoCode, setPromoCode] = useState('')
   const [promoStatus, setPromoStatus] = useState<'idle' | 'loading' | 'valid' | 'invalid'>('idle')
   const [promoError, setPromoError] = useState('')
-  const [discountedPrice, setDiscountedPrice] = useState<number | null>(null)
+  const [discount, setDiscount] = useState<{ percentage?: number | null; amountEur?: number | null } | null>(null)
   const params = useLocalSearchParams<{
     packageId: string
     packageName: string
@@ -31,17 +31,24 @@ export default function PaymentScreen() {
     country: string
   }>()
 
-  const finalPrice = discountedPrice ?? parseInt(params.price)
+  // La remise s'applique sur le montant DEJA converti dans la devise
+  // d'affichage, exactement comme le fait l'edge function sur le prix en euros.
+  // L'appliquer sur les XPF avant l'arrondi a l'euro superieur la rendait
+  // invisible sur plus de la moitie du catalogue.
+  const basePrice = toDisplayAmount(parseInt(params.price), currency)
+  const finalPrice = discount
+    ? applyDiscountTo(basePrice, currency, discount.percentage, discount.amountEur)
+    : basePrice
 
   async function handleApplyPromo() {
     if (!promoCode.trim()) return
     setPromoStatus('loading')
     const result = await validateEsimPromoCode(promoCode.trim(), parseInt(params.price))
     if (result.isValid) {
-      setDiscountedPrice(result.discountedPriceXpf)
+      setDiscount({ percentage: result.discountPercentage, amountEur: result.discountAmountEur })
       setPromoStatus('valid')
     } else {
-      setDiscountedPrice(null)
+      setDiscount(null)
       setPromoError(result.error ?? 'Code promo invalide')
       setPromoStatus('invalid')
     }
@@ -104,14 +111,22 @@ export default function PaymentScreen() {
             <Text style={s.rowVal}>{params.days}</Text>
           </View>
           {promoStatus === 'valid' && (
-            <View style={s.row}>
-              <Text style={s.rowLabel}>Code promo</Text>
-              <Text style={[s.rowVal,{color:COLORS.success}]}>{promoCode.trim().toUpperCase()}</Text>
-            </View>
+            <>
+              <View style={s.row}>
+                <Text style={s.rowLabel}>Code promo</Text>
+                <Text style={[s.rowVal,{color:COLORS.success}]}>{promoCode.trim().toUpperCase()}</Text>
+              </View>
+              <View style={s.row}>
+                <Text style={s.rowLabel}>Remise</Text>
+                <Text style={[s.rowVal,{color:COLORS.success}]}>
+                  {discount?.percentage ? `-${discount.percentage} %` : `-${formatAmount(basePrice - finalPrice, currency)}`}
+                </Text>
+              </View>
+            </>
           )}
           <View style={[s.row,{borderBottomWidth:0,marginTop:8}]}>
             <Text style={s.totalLabel}>Total</Text>
-            <Text style={s.totalVal}>{formatXpf(finalPrice)}</Text>
+            <Text style={s.totalVal}>{formatAmount(finalPrice, currency)}</Text>
           </View>
         </View>
 
@@ -124,7 +139,7 @@ export default function PaymentScreen() {
               placeholderTextColor="#aaa"
               autoCapitalize="characters"
               value={promoCode}
-              onChangeText={(v) => { setPromoCode(v); setPromoStatus('idle'); setDiscountedPrice(null) }}
+              onChangeText={(v) => { setPromoCode(v); setPromoStatus('idle'); setDiscount(null) }}
               editable={promoStatus !== 'loading'}
             />
             <TouchableOpacity style={s.promoBtn} onPress={handleApplyPromo} disabled={!promoCode.trim() || promoStatus === 'loading'}>
@@ -153,7 +168,7 @@ export default function PaymentScreen() {
               ? <ActivityIndicator color="#fff" />
               : <>
                   <Ionicons name="card-outline" size={20} color="#fff" style={{marginRight:8}} />
-                  <Text style={s.ctaTxt}>Payer {formatXpf(finalPrice)}</Text>
+                  <Text style={s.ctaTxt}>Payer {formatAmount(finalPrice, currency)}</Text>
                 </>
             }
           </LinearGradient>
