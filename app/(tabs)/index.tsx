@@ -133,10 +133,25 @@ export default function HomeScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
 
         <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:1}} style={s.header}>
-          {/* Formes decoratives : donnent de la profondeur au degrade sans
-              dependre d'une illustration a produire et a embarquer. */}
-          <View pointerEvents="none" style={s.heroBlobA} />
-          <View pointerEvents="none" style={s.heroBlobB} />
+          {/* Illustration embarquee plutot que chargee depuis le Storage :
+              le fichier d'origine est un PNG de 1,27 Mo, et l'endpoint de
+              transformation de Supabase ne le convertit en WebP (14 Ko) que
+              pour les clients qui l'annoncent. React Native iOS ne le fait
+              pas et recevrait donc 589 Ko a chaque ouverture -- mesure le
+              2026-09-09. Recompressee en JPEG 1200px, elle pese 70 Ko, elle
+              s'affiche instantanement et fonctionne hors ligne. */}
+          <ImageBackground
+            source={require('../../assets/images/hero.jpg')}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+          >
+            {/* Voile de lisibilite : le haut de l'illustration est clair, le
+                texte blanc y perdrait du contraste. */}
+            <LinearGradient
+              colors={['rgba(60,10,70,0.34)', 'rgba(60,10,70,0.10)', 'transparent']}
+              style={StyleSheet.absoluteFill}
+            />
+          </ImageBackground>
 
           <View style={s.headerRow}>
             <View style={{flex:1}}>
@@ -471,8 +486,6 @@ export default function HomeScreen() {
 const s = StyleSheet.create({
   safe:{flex:1,backgroundColor:COLORS.bg},
   header:{paddingHorizontal:20,paddingTop:16,paddingBottom:22,borderBottomLeftRadius:RADIUS.xl,borderBottomRightRadius:RADIUS.xl,overflow:'hidden'},
-  heroBlobA:{position:'absolute',top:-70,right:-40,width:190,height:190,borderRadius:95,backgroundColor:'rgba(255,255,255,0.13)'},
-  heroBlobB:{position:'absolute',bottom:-90,left:-50,width:210,height:210,borderRadius:105,backgroundColor:'rgba(255,255,255,0.09)'},
   headerRow:{flexDirection:'row',justifyContent:'space-between',alignItems:'flex-start'},
   greeting:{color:'rgba(255,255,255,0.9)',fontSize:14,fontWeight:'600'},
   name:{color:'#fff',...TYPO.hero,marginTop:2},
