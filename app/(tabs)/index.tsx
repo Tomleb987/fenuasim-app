@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Animated, Easing } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Animated, Easing, ImageBackground } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { supabase } from '../../lib/supabase'
-import { COLORS } from '../../constants/theme'
+import { COLORS, RADIUS, SHADOW, TYPO } from '../../constants/theme'
+import { destinationImageUrl } from '../../lib/destinationImage'
 import { useDataUsage } from '../../hooks/useDataUsage'
 import { useTravelers } from '../../hooks/useTravelers'
 import { useDevices } from '../../hooks/useDevices'
@@ -132,26 +133,33 @@ export default function HomeScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
 
         <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:1}} style={s.header}>
+          {/* Formes decoratives : donnent de la profondeur au degrade sans
+              dependre d'une illustration a produire et a embarquer. */}
+          <View pointerEvents="none" style={s.heroBlobA} />
+          <View pointerEvents="none" style={s.heroBlobB} />
+
           <View style={s.headerRow}>
-            <View>
+            <View style={{flex:1}}>
               <Text style={s.greeting}>Bonjour 👋</Text>
               <Text style={s.name}>Bienvenue sur FENUASIM</Text>
+              <Text style={s.heroSub}>Restez connecté partout dans le monde</Text>
             </View>
             <TouchableOpacity style={s.avatarBtn} onPress={() => router.push('/(tabs)/account')}>
               <Ionicons name="person-outline" size={20} color="#fff" />
             </TouchableOpacity>
           </View>
+
+          {/* La recherche etait un bouton en degrade pose sous le hero. Posee
+              en blanc sur le degrade, elle se lit comme un champ et devient
+              l'action evidente de l'ecran. */}
+          <TouchableOpacity style={s.searchBar} onPress={() => router.push('/(tabs)/explore')} activeOpacity={0.9}>
+            <Ionicons name="search" size={20} color={COLORS.textMuted} />
+            <Text style={s.searchTxt}>Trouver une eSIM</Text>
+            <Ionicons name="chevron-forward" size={18} color="#C9C9C9" />
+          </TouchableOpacity>
         </LinearGradient>
 
         <View style={s.content}>
-
-          <TouchableOpacity style={s.mainCta} onPress={() => router.push('/(tabs)/explore')}>
-            <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.mainCtaGrad}>
-              <Ionicons name="search-outline" size={22} color="#fff" />
-              <Text style={s.mainCtaTxt}>Trouver une eSIM</Text>
-              <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
-            </LinearGradient>
-          </TouchableOpacity>
 
           {isGuest && (
             <TouchableOpacity style={s.guestBanner} onPress={() => router.push('/(auth)/login')}>
@@ -178,10 +186,31 @@ export default function HomeScreen() {
                 key={d.slug}
                 onPress={() => router.push({ pathname: '/esim/[country]', params: { country: d.slug } })}
               >
-                <LinearGradient colors={[d.c1, d.c2]} style={s.destCard}>
-                  <Text style={s.destFlag}>{d.flag}</Text>
-                  <Text style={s.destName}>{d.nameFR}</Text>
-                </LinearGradient>
+                <View style={s.destCard}>
+                  {/* La photo vient du bucket public product-images du site.
+                      Le degrade reste dessous : si l'image manque ou tarde,
+                      la carte est deja lisible plutot que blanche. */}
+                  <LinearGradient colors={[d.c1, d.c2]} style={StyleSheet.absoluteFill} />
+                  <ImageBackground
+                    source={{ uri: destinationImageUrl(d.slug, 420) ?? undefined }}
+                    style={StyleSheet.absoluteFill}
+                    imageStyle={{ borderRadius: RADIUS.lg }}
+                  >
+                    <LinearGradient
+                      colors={['transparent', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0.62)']}
+                      style={StyleSheet.absoluteFill}
+                    />
+                  </ImageBackground>
+                  <View style={s.destBadge}>
+                    <Text style={s.destFlag}>{d.flag}</Text>
+                  </View>
+                  <View style={s.destFoot}>
+                    <Text style={s.destName} numberOfLines={1}>{d.nameFR}</Text>
+                    <View style={s.destGo}>
+                      <Ionicons name="chevron-forward" size={13} color="#fff" />
+                    </View>
+                  </View>
+                </View>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -441,31 +470,36 @@ export default function HomeScreen() {
 
 const s = StyleSheet.create({
   safe:{flex:1,backgroundColor:COLORS.bg},
-  header:{padding:20,paddingBottom:24},
+  header:{paddingHorizontal:20,paddingTop:16,paddingBottom:22,borderBottomLeftRadius:RADIUS.xl,borderBottomRightRadius:RADIUS.xl,overflow:'hidden'},
+  heroBlobA:{position:'absolute',top:-70,right:-40,width:190,height:190,borderRadius:95,backgroundColor:'rgba(255,255,255,0.13)'},
+  heroBlobB:{position:'absolute',bottom:-90,left:-50,width:210,height:210,borderRadius:105,backgroundColor:'rgba(255,255,255,0.09)'},
   headerRow:{flexDirection:'row',justifyContent:'space-between',alignItems:'flex-start'},
-  greeting:{color:'rgba(255,255,255,0.85)',fontSize:13},
-  name:{color:'#fff',fontSize:20,fontWeight:'800',marginTop:2},
-  avatarBtn:{backgroundColor:'rgba(255,255,255,0.2)',borderRadius:20,width:36,height:36,justifyContent:'center',alignItems:'center'},
+  greeting:{color:'rgba(255,255,255,0.9)',fontSize:14,fontWeight:'600'},
+  name:{color:'#fff',...TYPO.hero,marginTop:2},
+  heroSub:{color:'rgba(255,255,255,0.9)',fontSize:13,marginTop:5},
+  avatarBtn:{backgroundColor:'rgba(255,255,255,0.22)',borderRadius:22,width:44,height:44,justifyContent:'center',alignItems:'center'},
+  searchBar:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:'#fff',borderRadius:RADIUS.pill,paddingHorizontal:18,paddingVertical:16,marginTop:20,...SHADOW.onColor},
+  searchTxt:{flex:1,fontSize:16,fontWeight:'600',color:COLORS.textMuted},
   content:{padding:16},
-  mainCta:{borderRadius:16,overflow:'hidden',marginBottom:20,marginTop:-12,shadowColor:'#D251D8',shadowOpacity:0.3,shadowRadius:8,elevation:4},
-  mainCtaGrad:{flexDirection:'row',alignItems:'center',padding:18,gap:12},
-  mainCtaTxt:{flex:1,color:'#fff',fontSize:17,fontWeight:'800'},
-  guestBanner:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:'#fff',borderRadius:16,padding:14,marginTop:14,borderWidth:1,borderColor:'rgba(210,81,216,0.25)'},
+  guestBanner:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:'#fff',borderRadius:RADIUS.md,padding:14,marginTop:14,borderWidth:1,borderColor:'rgba(210,81,216,0.25)',...SHADOW.card},
   guestBannerIcon:{width:38,height:38,borderRadius:19,backgroundColor:'rgba(210,81,216,0.1)',alignItems:'center',justifyContent:'center'},
   guestBannerTitle:{fontSize:14,fontWeight:'800',color:COLORS.text},
   guestBannerTxt:{fontSize:12,color:COLORS.textMuted,marginTop:2},
   secHead:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:12,marginTop:4},
-  secTitle:{fontSize:16,fontWeight:'700',color:COLORS.text},
-  secLink:{fontSize:13,fontWeight:'600',color:COLORS.violet},
-  destScroll:{marginBottom:20},
-  destCard:{width:110,height:80,borderRadius:14,marginRight:10,justifyContent:'flex-end',padding:8,alignItems:'center'},
-  destFlag:{fontSize:30,marginBottom:2},
-  destName:{color:'#fff',fontSize:11,fontWeight:'700',textAlign:'center'},
-  regionCard:{width:118,backgroundColor:'#fff',borderRadius:14,marginRight:10,padding:12,alignItems:'flex-start',shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
+  secTitle:{...TYPO.section,color:COLORS.text},
+  secLink:{fontSize:13,fontWeight:'700',color:COLORS.violet},
+  destScroll:{marginBottom:22},
+  destCard:{width:150,height:190,borderRadius:RADIUS.lg,marginRight:12,overflow:'hidden',justifyContent:'space-between',padding:12,...SHADOW.card},
+  destBadge:{alignSelf:'flex-start',backgroundColor:'rgba(255,255,255,0.92)',borderRadius:RADIUS.sm,paddingHorizontal:7,paddingVertical:3},
+  destFlag:{fontSize:22},
+  destFoot:{flexDirection:'row',alignItems:'center',gap:8},
+  destName:{flex:1,color:'#fff',fontSize:15,fontWeight:'800'},
+  destGo:{width:26,height:26,borderRadius:13,backgroundColor:'rgba(255,255,255,0.28)',alignItems:'center',justifyContent:'center'},
+  regionCard:{width:124,backgroundColor:'#fff',borderRadius:RADIUS.md,marginRight:12,padding:14,alignItems:'flex-start',...SHADOW.card},
   regionIcon:{fontSize:22,marginBottom:6},
   regionName:{fontSize:13,fontWeight:'700',color:COLORS.text},
   regionPrice:{fontSize:11,color:COLORS.textMuted,marginTop:3},
-  esimCard:{backgroundColor:'#fff',borderRadius:16,padding:16,marginBottom:10,shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
+  esimCard:{backgroundColor:'#fff',borderRadius:RADIUS.lg,padding:16,marginBottom:12,...SHADOW.card},
   esimHead:{flexDirection:'row',alignItems:'center',gap:10,marginBottom:10},
   simIcon:{width:40,height:40,borderRadius:12,backgroundColor:'rgba(210,81,216,0.1)',justifyContent:'center',alignItems:'center'},
   esimTitle:{fontSize:14,fontWeight:'700',color:COLORS.text},
@@ -503,7 +537,7 @@ const s = StyleSheet.create({
   helpBtn:{flexDirection:'row',alignItems:'center',gap:5,paddingTop:8,marginTop:2},
   helpTxt:{color:COLORS.textMuted,fontSize:12,fontWeight:'600'},
   grid:{flexDirection:'row',flexWrap:'wrap',gap:10},
-  gridCard:{backgroundColor:'#fff',borderRadius:16,padding:14,alignItems:'center',width:'47%',shadowColor:'#000',shadowOpacity:0.05,shadowRadius:6,elevation:2},
-  gridIcon:{width:44,height:44,borderRadius:12,justifyContent:'center',alignItems:'center',marginBottom:8},
+  gridCard:{backgroundColor:'#fff',borderRadius:RADIUS.lg,padding:16,alignItems:'center',width:'47%',...SHADOW.card},
+  gridIcon:{width:46,height:46,borderRadius:RADIUS.md,justifyContent:'center',alignItems:'center',marginBottom:9},
   gridLabel:{fontSize:13,fontWeight:'600',color:COLORS.text,textAlign:'center'},
 })
