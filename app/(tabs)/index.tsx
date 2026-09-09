@@ -74,7 +74,7 @@ export default function HomeScreen() {
   const { session, isGuest } = useSession()
   const [esims, setEsims] = useState<any[]>([])
   const [regions, setRegions] = useState<{ nameFR: string; slug: string; minPrice: number; key: string }[]>([])
-  const { fetchUsage, getPct, getUsedStr, getRemainingStr, isLoading, hasReliableUsage } = useDataUsage()
+  const { fetchUsage, getPct, getUsedStr, getRemainingStr, isLoading, hasReliableUsage, getVoiceSmsUsage } = useDataUsage()
   const { travelers } = useTravelers()
   const { devices } = useDevices()
   const { byIccid: getAssignment } = useEsimAssignments()
@@ -221,6 +221,9 @@ export default function HomeScreen() {
                 const loading = iccid ? isLoading(iccid) : false
                 const used = iccid ? getUsedStr(iccid) : null
                 const remaining = iccid ? getRemainingStr(iccid) : null
+                // null pour un forfait Internet seul : la ligne appels/SMS
+                // n'apparait alors pas du tout.
+                const voiceSms = iccid ? getVoiceSmsUsage(iccid) : null
                 const { label: statusLabel, color: statusColor, isExpired } = getEsimStatus(e)
 
                 const assignment = getAssignment(iccid)
@@ -316,7 +319,29 @@ export default function HomeScreen() {
                         <Text style={s.consoLoading}>Consommation pas encore disponible</Text>
                       </View>
                     ) : used && used !== '-' ? (
-                      <ConsoGauge pct={pct} used={used} remaining={remaining ?? '-'} />
+                      <>
+                        <ConsoGauge pct={pct} used={used} remaining={remaining ?? '-'} />
+                        {voiceSms && (
+                          <View style={s.voiceRow}>
+                            {voiceSms.voice && (
+                              <View style={s.voiceChip}>
+                                <Ionicons name="call-outline" size={12} color={COLORS.violet} />
+                                <Text style={s.voiceChipTxt}>
+                                  {voiceSms.voice.remaining} / {voiceSms.voice.total} min
+                                </Text>
+                              </View>
+                            )}
+                            {voiceSms.sms && (
+                              <View style={s.voiceChip}>
+                                <Ionicons name="chatbubble-outline" size={12} color={COLORS.violet} />
+                                <Text style={s.voiceChipTxt}>
+                                  {voiceSms.sms.remaining} / {voiceSms.sms.total} SMS
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        )}
+                      </>
                     ) : (
                       <View style={s.forfaitRow}>
                         <View style={s.chip}>
@@ -454,6 +479,9 @@ const s = StyleSheet.create({
   unassignedTxt:{fontSize:12,color:'#9A6200',fontWeight:'600'},
   assignLink:{fontSize:12,fontWeight:'700',color:COLORS.violet},
   consoRow:{flexDirection:'row',alignItems:'center',gap:8,paddingVertical:4},
+  voiceRow:{flexDirection:'row',gap:6,marginTop:8},
+  voiceChip:{flexDirection:'row',alignItems:'center',gap:4,backgroundColor:'rgba(210,81,216,0.08)',borderRadius:20,paddingHorizontal:9,paddingVertical:4},
+  voiceChipTxt:{fontSize:11,fontWeight:'700',color:COLORS.violet},
   consoLoading:{fontSize:12,color:COLORS.textMuted},
   consoWrap:{marginBottom:6},
   barTrack:{backgroundColor:'#F0F0F0',borderRadius:20,height:8,overflow:'hidden',marginBottom:8},
