@@ -24,17 +24,20 @@ import dayjs from 'dayjs'
 // reellement presentes et actives en base (verifie par requete reelle) sont
 // gardees au chargement, jamais inventees.
 const REGION_KEYS = ['Europe', 'Asia', 'North America', 'Oceania', 'Global']
-const REGION_ICON: Record<string, string> = { Europe: '🇪🇺', Asia: '🌏', 'North America': '🌎', Oceania: '🏝️', Global: '🌍' }
-// L'emoji seul flottait sur la carte sans exister comme element graphique.
-// Pose dans une pastille teintee, il devient un picto a part entiere, et le
-// choix reste plus parlant qu'une icone generique pour designer une region.
-const REGION_TINT: Record<string, string> = {
-  Europe: 'rgba(41,128,185,0.12)',
-  Asia: 'rgba(253,127,60,0.14)',
-  'North America': 'rgba(71,118,230,0.12)',
-  Oceania: 'rgba(16,185,129,0.13)',
-  Global: 'rgba(210,81,216,0.12)',
+// La banque d'images du site couvre aussi les zones. Le slug du forfait
+// correspond au nom de fichier pour quatre regions sur cinq ; seul Global est
+// stocke sous "discover-global", d'ou cette table plutot qu'une deduction.
+// Un emoji dans une pastille restait un signe pose sur une carte : une vraie
+// photo donne aux regions le meme langage visuel qu'aux destinations.
+const REGION_IMAGE: Record<string, string> = {
+  Europe: 'europe',
+  Asia: 'asia',
+  'North America': 'north-america',
+  Oceania: 'oceania',
+  Global: 'discover-global',
 }
+// Conserve comme repli quand aucune photo ne repond.
+const REGION_ICON: Record<string, string> = { Europe: '🇪🇺', Asia: '🌏', 'North America': '🌎', Oceania: '🏝️', Global: '🌍' }
 
 type QuickAction = {
   label: string
@@ -267,13 +270,24 @@ export default function HomeScreen() {
                   <TouchableOpacity
                     key={r.key}
                     style={s.regionCard}
+                    activeOpacity={0.9}
                     onPress={() => router.push({ pathname: '/esim/[country]', params: { country: r.slug } })}
                   >
-                    <View style={[s.regionIconWrap, { backgroundColor: REGION_TINT[r.key] ?? 'rgba(210,81,216,0.10)' }]}>
-                      <Text style={s.regionIcon}>{REGION_ICON[r.key] ?? '🌐'}</Text>
+                    <ImageBackground
+                      source={{ uri: destinationImageUrl(REGION_IMAGE[r.key], 340, 264) ?? undefined }}
+                      style={StyleSheet.absoluteFill}
+                      imageStyle={{ borderRadius: RADIUS.lg }}
+                    >
+                      <LinearGradient
+                        colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.30)', 'rgba(0,0,0,0.70)']}
+                        style={StyleSheet.absoluteFill}
+                      />
+                    </ImageBackground>
+                    <Text style={s.regionEmoji}>{REGION_ICON[r.key] ?? '🌐'}</Text>
+                    <View>
+                      <Text style={s.regionName} numberOfLines={1}>{r.nameFR}</Text>
+                      <Text style={s.regionPrice}>Dès {formatXpf(r.minPrice)}</Text>
                     </View>
-                    <Text style={s.regionName}>{r.nameFR}</Text>
-                    <Text style={s.regionPrice}>Dès {formatXpf(r.minPrice)}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -487,14 +501,14 @@ export default function HomeScreen() {
                   router.push(a.href as any)
                 }}
               >
-                <View style={[s.gridIcon, { backgroundColor: a.tint }]}>
-                  <Ionicons name={a.icon} size={22} color={a.color} />
+                <View style={s.gridTop}>
+                  <View style={[s.gridIcon, { backgroundColor: a.tint }]}>
+                    <Ionicons name={a.icon} size={22} color={a.color} />
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#CFCFCF" />
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.gridLabel}>{a.label}</Text>
-                  <Text style={s.gridSub}>{a.sub}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color="#CFCFCF" />
+                <Text style={s.gridLabel}>{a.label}</Text>
+                <Text style={s.gridSub}>{a.sub}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -534,11 +548,10 @@ const s = StyleSheet.create({
   destFoot:{flexDirection:'row',alignItems:'center',gap:8},
   destName:{flex:1,color:'#fff',fontSize:15,fontWeight:'800'},
   destGo:{width:26,height:26,borderRadius:13,backgroundColor:'rgba(255,255,255,0.28)',alignItems:'center',justifyContent:'center'},
-  regionCard:{width:124,backgroundColor:'#fff',borderRadius:RADIUS.md,marginRight:12,padding:14,alignItems:'flex-start',...SHADOW.card},
-  regionIconWrap:{width:40,height:40,borderRadius:20,alignItems:'center',justifyContent:'center',marginBottom:9},
-  regionIcon:{fontSize:20},
-  regionName:{fontSize:13,fontWeight:'700',color:COLORS.text},
-  regionPrice:{fontSize:11,color:COLORS.textMuted,marginTop:3},
+  regionCard:{width:170,height:132,borderRadius:RADIUS.lg,marginRight:12,overflow:'hidden',justifyContent:'space-between',padding:12,backgroundColor:'#DCD8DE',...SHADOW.card},
+  regionEmoji:{fontSize:22},
+  regionName:{fontSize:14,fontWeight:'800',color:'#fff'},
+  regionPrice:{fontSize:12,color:'rgba(255,255,255,0.92)',fontWeight:'600',marginTop:2},
   esimCard:{backgroundColor:'#fff',borderRadius:RADIUS.lg,padding:16,marginBottom:12,...SHADOW.card},
   esimHead:{flexDirection:'row',alignItems:'center',gap:10,marginBottom:10},
   simIcon:{width:40,height:40,borderRadius:12,backgroundColor:'rgba(210,81,216,0.1)',justifyContent:'center',alignItems:'center'},
@@ -576,9 +589,10 @@ const s = StyleSheet.create({
   installTxt:{color:COLORS.violet,fontSize:13,fontWeight:'600'},
   helpBtn:{flexDirection:'row',alignItems:'center',gap:5,paddingTop:8,marginTop:2},
   helpTxt:{color:COLORS.textMuted,fontSize:12,fontWeight:'600'},
-  grid:{gap:10},
-  gridCard:{flexDirection:'row',alignItems:'center',gap:13,backgroundColor:'#fff',borderRadius:RADIUS.lg,paddingHorizontal:14,paddingVertical:14,...SHADOW.card},
+  grid:{flexDirection:'row',flexWrap:'wrap',gap:10},
+  gridCard:{width:'47.6%',backgroundColor:'#fff',borderRadius:RADIUS.lg,padding:14,...SHADOW.card},
+  gridTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:10},
   gridIcon:{width:44,height:44,borderRadius:RADIUS.md,justifyContent:'center',alignItems:'center'},
   gridLabel:{...TYPO.cardTitle,color:COLORS.text},
-  gridSub:{fontSize:12,color:COLORS.textMuted,marginTop:2},
+  gridSub:{fontSize:12,color:COLORS.textMuted,marginTop:3,lineHeight:16},
 })
