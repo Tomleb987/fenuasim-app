@@ -26,8 +26,17 @@ const BUCKET = 'product-images'
  * `width` est la largeur de rendu souhaitee en pixels (pas en points) :
  * prevoir environ 2x la taille d'affichage pour rester net sur un ecran dense.
  */
-export function destinationImageUrl(slug: string | null | undefined, width = 600): string | null {
+export function destinationImageUrl(
+  slug: string | null | undefined,
+  width = 600,
+  height?: number,
+): string | null {
   if (!slug || !SUPABASE_URL) return null
   const base = SUPABASE_URL.replace(/\/+$/, '')
-  return `${base}/storage/v1/render/image/public/${BUCKET}/esim-${slug}.jpg?width=${width}&quality=70`
+  // Quand une hauteur est fournie, le recadrage est fait par le serveur au
+  // ratio exact de la carte (resize=cover, recadrage centre). On telecharge
+  // alors uniquement ce qui est affiche, et le rendu est previsible -- plutot
+  // que de laisser le composant rogner une image dont le format varie.
+  const size = height ? `width=${width}&height=${height}&resize=cover` : `width=${width}`
+  return `${base}/storage/v1/render/image/public/${BUCKET}/esim-${slug}.jpg?${size}&quality=70`
 }

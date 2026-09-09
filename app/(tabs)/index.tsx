@@ -25,6 +25,33 @@ import dayjs from 'dayjs'
 // gardees au chargement, jamais inventees.
 const REGION_KEYS = ['Europe', 'Asia', 'North America', 'Oceania', 'Global']
 const REGION_ICON: Record<string, string> = { Europe: '🇪🇺', Asia: '🌏', 'North America': '🌎', Oceania: '🏝️', Global: '🌍' }
+// L'emoji seul flottait sur la carte sans exister comme element graphique.
+// Pose dans une pastille teintee, il devient un picto a part entiere, et le
+// choix reste plus parlant qu'une icone generique pour designer une region.
+const REGION_TINT: Record<string, string> = {
+  Europe: 'rgba(41,128,185,0.12)',
+  Asia: 'rgba(253,127,60,0.14)',
+  'North America': 'rgba(71,118,230,0.12)',
+  Oceania: 'rgba(16,185,129,0.13)',
+  Global: 'rgba(210,81,216,0.12)',
+}
+
+type QuickAction = {
+  label: string
+  sub: string
+  icon: React.ComponentProps<typeof Ionicons>['name']
+  color: string
+  tint: string
+  href: string
+  needsAuth?: boolean
+}
+
+const QUICK_ACTIONS: QuickAction[] = [
+  { label: 'Mes commandes', sub: 'Suivez et gérez vos achats', icon: 'receipt-outline', color: COLORS.success, tint: 'rgba(10,135,84,0.10)', href: '/(tabs)/account' },
+  { label: 'Support', sub: "Obtenez de l'aide rapidement", icon: 'headset-outline', color: '#7C6CF0', tint: 'rgba(124,108,240,0.12)', href: '/support' },
+  { label: 'Assurance voyage', sub: "Voyagez l'esprit tranquille", icon: 'shield-outline', color: '#FD7F3C', tint: 'rgba(253,127,60,0.12)', href: '/insurance/form', needsAuth: true },
+  { label: 'Mon compte', sub: 'Gérez votre profil', icon: 'person-outline', color: COLORS.violet, tint: 'rgba(210,81,216,0.10)', href: '/(tabs)/account' },
+]
 
 const TOP_DEST = [
   { nameFR: 'Japon', slug: 'japan', c1: '#FF6B6B', c2: '#FF8E53', flag: '🇯🇵' },
@@ -207,7 +234,7 @@ export default function HomeScreen() {
                       la carte est deja lisible plutot que blanche. */}
                   <LinearGradient colors={[d.c1, d.c2]} style={StyleSheet.absoluteFill} />
                   <ImageBackground
-                    source={{ uri: destinationImageUrl(d.slug, 420) ?? undefined }}
+                    source={{ uri: destinationImageUrl(d.slug, 400, 310) ?? undefined }}
                     style={StyleSheet.absoluteFill}
                     imageStyle={{ borderRadius: RADIUS.lg }}
                   >
@@ -242,7 +269,9 @@ export default function HomeScreen() {
                     style={s.regionCard}
                     onPress={() => router.push({ pathname: '/esim/[country]', params: { country: r.slug } })}
                   >
-                    <Text style={s.regionIcon}>{REGION_ICON[r.key] ?? '🌐'}</Text>
+                    <View style={[s.regionIconWrap, { backgroundColor: REGION_TINT[r.key] ?? 'rgba(210,81,216,0.10)' }]}>
+                      <Text style={s.regionIcon}>{REGION_ICON[r.key] ?? '🌐'}</Text>
+                    </View>
                     <Text style={s.regionName}>{r.nameFR}</Text>
                     <Text style={s.regionPrice}>Dès {formatXpf(r.minPrice)}</Text>
                   </TouchableOpacity>
@@ -448,33 +477,26 @@ export default function HomeScreen() {
             <Text style={s.secTitle}>Actions rapides</Text>
           </View>
           <View style={s.grid}>
-            <TouchableOpacity style={s.gridCard} onPress={() => router.push('/(tabs)/account')}>
-              <View style={[s.gridIcon,{backgroundColor:'rgba(10,135,84,0.1)'}]}>
-                <Ionicons name="receipt-outline" size={24} color={COLORS.success} />
-              </View>
-              <Text style={s.gridLabel}>Mes commandes</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.gridCard} onPress={() => router.push('/support')}>
-              <View style={[s.gridIcon,{backgroundColor:'rgba(136,135,128,0.15)'}]}>
-                <Ionicons name="headset-outline" size={24} color="#888" />
-              </View>
-              <Text style={s.gridLabel}>Support</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={s.gridCard}
-              onPress={() => { if (requireAuth(router, session, '/insurance/form')) router.push('/insurance/form') }}
-            >
-              <View style={[s.gridIcon,{backgroundColor:'rgba(253,127,60,0.12)'}]}>
-                <Ionicons name="shield-outline" size={24} color="#FD7F3C" />
-              </View>
-              <Text style={s.gridLabel}>Assurance voyage</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.gridCard} onPress={() => router.push('/(tabs)/account')}>
-              <View style={[s.gridIcon,{backgroundColor:'rgba(210,81,216,0.1)'}]}>
-                <Ionicons name="person-outline" size={24} color={COLORS.violet} />
-              </View>
-              <Text style={s.gridLabel}>Mon compte</Text>
-            </TouchableOpacity>
+            {QUICK_ACTIONS.map(a => (
+              <TouchableOpacity
+                key={a.label}
+                style={s.gridCard}
+                activeOpacity={0.85}
+                onPress={() => {
+                  if (a.needsAuth && !requireAuth(router, session, a.href)) return
+                  router.push(a.href as any)
+                }}
+              >
+                <View style={[s.gridIcon, { backgroundColor: a.tint }]}>
+                  <Ionicons name={a.icon} size={22} color={a.color} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.gridLabel}>{a.label}</Text>
+                  <Text style={s.gridSub}>{a.sub}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color="#CFCFCF" />
+              </TouchableOpacity>
+            ))}
           </View>
 
         </View>
@@ -502,14 +524,19 @@ const s = StyleSheet.create({
   secTitle:{...TYPO.section,color:COLORS.text},
   secLink:{fontSize:13,fontWeight:'700',color:COLORS.violet},
   destScroll:{marginBottom:22},
-  destCard:{width:150,height:190,borderRadius:RADIUS.lg,marginRight:12,overflow:'hidden',justifyContent:'space-between',padding:12,...SHADOW.card},
+  // Format paysage : sur les 6 destinations de l'accueil, 4 photos sont en
+  // 3:2 paysage et 2 en portrait. Une carte portrait rognait donc pres de la
+  // moitie de la largeur des paysages. A 1,29 les paysages sont quasi intacts
+  // et les portraits restent centres sur leur sujet.
+  destCard:{width:196,height:152,borderRadius:RADIUS.lg,marginRight:12,overflow:'hidden',justifyContent:'space-between',padding:12,...SHADOW.card},
   destBadge:{alignSelf:'flex-start',backgroundColor:'rgba(255,255,255,0.92)',borderRadius:RADIUS.sm,paddingHorizontal:7,paddingVertical:3},
   destFlag:{fontSize:22},
   destFoot:{flexDirection:'row',alignItems:'center',gap:8},
   destName:{flex:1,color:'#fff',fontSize:15,fontWeight:'800'},
   destGo:{width:26,height:26,borderRadius:13,backgroundColor:'rgba(255,255,255,0.28)',alignItems:'center',justifyContent:'center'},
   regionCard:{width:124,backgroundColor:'#fff',borderRadius:RADIUS.md,marginRight:12,padding:14,alignItems:'flex-start',...SHADOW.card},
-  regionIcon:{fontSize:22,marginBottom:6},
+  regionIconWrap:{width:40,height:40,borderRadius:20,alignItems:'center',justifyContent:'center',marginBottom:9},
+  regionIcon:{fontSize:20},
   regionName:{fontSize:13,fontWeight:'700',color:COLORS.text},
   regionPrice:{fontSize:11,color:COLORS.textMuted,marginTop:3},
   esimCard:{backgroundColor:'#fff',borderRadius:RADIUS.lg,padding:16,marginBottom:12,...SHADOW.card},
@@ -549,8 +576,9 @@ const s = StyleSheet.create({
   installTxt:{color:COLORS.violet,fontSize:13,fontWeight:'600'},
   helpBtn:{flexDirection:'row',alignItems:'center',gap:5,paddingTop:8,marginTop:2},
   helpTxt:{color:COLORS.textMuted,fontSize:12,fontWeight:'600'},
-  grid:{flexDirection:'row',flexWrap:'wrap',gap:10},
-  gridCard:{backgroundColor:'#fff',borderRadius:RADIUS.lg,padding:16,alignItems:'center',width:'47%',...SHADOW.card},
-  gridIcon:{width:46,height:46,borderRadius:RADIUS.md,justifyContent:'center',alignItems:'center',marginBottom:9},
-  gridLabel:{fontSize:13,fontWeight:'600',color:COLORS.text,textAlign:'center'},
+  grid:{gap:10},
+  gridCard:{flexDirection:'row',alignItems:'center',gap:13,backgroundColor:'#fff',borderRadius:RADIUS.lg,paddingHorizontal:14,paddingVertical:14,...SHADOW.card},
+  gridIcon:{width:44,height:44,borderRadius:RADIUS.md,justifyContent:'center',alignItems:'center'},
+  gridLabel:{...TYPO.cardTitle,color:COLORS.text},
+  gridSub:{fontSize:12,color:COLORS.textMuted,marginTop:2},
 })
