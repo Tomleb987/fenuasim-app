@@ -55,7 +55,17 @@
           "resizeMode": "contain"
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "extraProguardRules": "# React Native et Hermes s'appuient massivement sur la reflexion : R8\n# supprimerait des classes qu'aucun appel direct ne reference, et\n# l'application planterait au lancement sans erreur de compilation.\n-keep class com.facebook.react.** { *; }\n-keep class com.facebook.hermes.** { *; }\n-keep class com.facebook.jni.** { *; }\n-keep class expo.modules.** { *; }\n-keepclassmembers class * { @com.facebook.proguard.annotations.DoNotStrip *; }\n-keepclassmembers class * { @com.facebook.common.internal.DoNotStrip *; }\n-dontwarn com.facebook.react.**\n-dontwarn expo.modules.**\n"
+          }
+        }
+      ]
     ],
     "locales": {
       "fr": "./locales/fr.json"
