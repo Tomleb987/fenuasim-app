@@ -146,22 +146,105 @@ eSIM. `app/support/faq.tsx:36` est également conditionnel et correct.
 
 ---
 
-## 4. Points restants (hors périmètre de cette correction, non traités)
+## 4. Correctif complementaire — bouton « Recharger » apres achat
 
-- ⚠️ **`app/esim/index.tsx:157`** — le bouton « Recharger » s'affiche sur toute eSIM
-  non expirée possédant un ICCID, sans consulter `available_topup`. L'utilisateur
-  d'un forfait non rechargeable arrive donc sur l'écran de recharge pour y lire
-  « Recharge non disponible pour ce forfait ». Ce n'est **pas** une promesse fausse
-  avant achat (le seul point signalé par le document), et la dégradation est propre,
-  mais le parcours pourrait être raccourci. Non corrigé faute de demande explicite.
-- ⚠️ La correction n'est vérifiée qu'en statique (`tsc` + SQL de production). Le
-  test visuel sur appareil — ouvrir le **catalogue du Qatar** et comparer un forfait
-  Go et un forfait illimité — reste à faire, ainsi que la publication d'un build.
+**Statut : ✅ corrige (commit `7b7143d`), sur demande.**
+
+`app/esim/index.tsx:157` et `app/(tabs)/index.tsx:458` affichaient « Recharger »
+des qu'une eSIM avait un ICCID et n'etait pas expiree, sans consulter
+`available_topup`.
+
+`usePackageInfo` expose desormais `getPackageTopup(packageId): boolean | null`,
+qui renvoie `null` tant que l'information est inconnue (forfait en cours de
+chargement, ou `package_id` disparu de `airalo_packages` — les parcours de
+secours de `getPackageDisplay` retrouvent une destination, jamais cette
+information). Les deux ecrans masquent le bouton **sur un `false` explicite
+uniquement**.
+
+### Verification sur les 383 commandes reelles de `airalo_orders`
+
+| Effet du correctif | Commandes |
+| --- | --- |
+| Forfait rechargeable → bouton conserve | 206 |
+| `package_id` disparu du catalogue → bouton conserve (inconnu) | 177 |
+| Forfait non rechargeable → bouton masque | **0** |
+
+Deux enseignements :
+- Le changement **ne retire le bouton a personne aujourd'hui** : aucune eSIM
+  vendue a ce jour ne porte un forfait non rechargeable. Risque de regression nul.
+- Un test `=== true` aurait supprime le bouton a tort sur **177 commandes (46 %)**,
+  celles dont le `package_id` n'est plus au catalogue. Le `!== false` etait
+  le bon choix, et cette repartition le demontre plutot qu'elle ne le suppose.
+
+`npx tsc --noEmit` : ✅ 0 erreur.
 
 ---
 
-## 5. Fichiers modifiés
+## 5. Points restants
 
-- `app/esim/[country].tsx` — badge « Rechargeable » conditionné à `available_topup === true`.
+- ⚠️ **Vérification statique uniquement** (`tsc` + SQL de production). Le test
+  visuel sur appareil reste a faire : ouvrir le **catalogue du Qatar** et comparer
+  un forfait en Go (badge « Rechargeable » attendu) et un forfait illimite (badge
+  absent attendu).
+- ⚠️ **Rien n'atteint les utilisateurs sans un nouveau build.** `expo-updates`
+  n'est pas installe et `app.json` ne declare aucun bloc `updates` : l'app n'a
+  **pas** de mise a jour OTA. Voir section 6.
 
-Aucune table, policy RLS, Edge Function ni donnée de production n'a été modifiée.
+---
+
+## 6. Faut-il redeposer sur Google Play et l'App Store ?
+
+**Oui, pour les deux — il n'y a pas d'alternative.**
+
+Ces corrections sont du JavaScript pur, donc techniquement « OTA-ables » sur un
+projet Expo classique. Mais ce projet ne l'est pas :
+
+| Verification | Resultat |
+| --- | --- |
+| `expo-updates` dans `package.json` | absent |
+| Bloc `updates` dans `app.json` | absent |
+| `runtimeVersion` dans `app.json` | absent |
+
+Sans ces trois elements, `eas update` n'a aucun canal pour livrer quoi que ce
+soit : le binaire installe ne va jamais chercher de mise a jour. Un **nouveau
+build + une soumission sur chaque store** est donc la seule voie.
+
+### Etat des versions
+
+- `app.json` : `version` 1.0.2, `ios.buildNumber` 13, `android.versionCode` 10.
+- `eas.json` a `autoIncrement: true` sur le profil `production` : les numeros de
+  build s'incrementeront seuls.
+- ⚠️ `app.json` porte une modification **non commitee** anterieure a cette session
+  (`versionCode` 9 → 10). Elle n'a pas ete touchee ici, mais elle doit etre
+  arbitree avant la build.
+
+### A verifier avant de lancer
+
+- ⚠️ **Quota EAS iOS.** Le plan gratuit plafonne a 15 builds iOS/mois, sans achat
+  de credits a l'unite, et le quota iOS etait epuise au 2026-09-09 avec une
+  remise a zero annoncee au 2026-10-01. A reverifier avant de compter dessus.
+- ⚠️ **Cle de compte de service Google Play.** `eas.json` pointe vers
+  `./secrets/google-play-service-account.json` ; les depots Android precedents
+  ont du etre faits a la main faute de cette cle.
+
+### Le point de calendrier qui compte
+
+La promesse fausse est **avant achat** (section 2) : elle continue de s'afficher
+sur les 48 forfaits concernes tant qu'aucun build n'est publie. La revue Apple
+prend generalement 24-48 h. Si l'urgence commerciale prime, le badge peut aussi
+etre neutralise cote serveur en attendant, mais ce n'est pas necessaire : le
+bug existe depuis l'origine de l'ecran et ne s'est pas aggrave le 20/09 —
+seules les donnees permettant de le corriger sont apparues.
+
+---
+
+## 7. Fichiers modifies
+
+| Commit | Fichier | Changement |
+| --- | --- | --- |
+| `a0cc01c` | `app/esim/[country].tsx` | badge « Rechargeable » conditionne a `available_topup === true` |
+| `7b7143d` | `hooks/usePackageInfo.ts` | `available_topup` remonte dans `PackageInfo` + `getPackageTopup()` |
+| `7b7143d` | `app/esim/index.tsx` | bouton « Recharger » masque sur un `false` explicite |
+| `7b7143d` | `app/(tabs)/index.tsx` | idem sur la liste d'accueil |
+
+Aucune table, policy RLS, Edge Function ni donnee de production n'a ete modifiee.
