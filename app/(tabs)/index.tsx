@@ -109,7 +109,7 @@ export default function HomeScreen() {
   const { travelers } = useTravelers()
   const { devices } = useDevices()
   const { byIccid: getAssignment } = useEsimAssignments()
-  const { fetchPackages, getPackageDisplay } = usePackageInfo()
+  const { fetchPackages, getPackageDisplay, getPackageTopup } = usePackageInfo()
 
   useEffect(() => { loadRegions() }, [])
 
@@ -456,7 +456,9 @@ export default function HomeScreen() {
                       </TouchableOpacity>
                     )}
 
-                    {iccid && !isExpired && (
+                    {/* Voir esim/index.tsx : masque uniquement sur un `false`
+                        explicite, jamais sur une information manquante. */}
+                    {iccid && !isExpired && getPackageTopup(e.package_id) !== false && (
                       <TouchableOpacity
                         style={s.installBtn}
                         onPress={() => router.push({

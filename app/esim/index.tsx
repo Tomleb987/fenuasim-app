@@ -22,7 +22,7 @@ export default function AllEsimsScreen() {
   const [loading, setLoading] = useState(true)
   const { travelers } = useTravelers()
   const { byIccid: getAssignment } = useEsimAssignments()
-  const { fetchPackages, getPackageDisplay } = usePackageInfo()
+  const { fetchPackages, getPackageDisplay, getPackageTopup } = usePackageInfo()
 
   // Meme raison que sur l'accueil : en revenant de l'ecran de recharge par le
   // bouton retour, cet ecran reste monte et affichait un solde perime.
@@ -153,7 +153,11 @@ export default function AllEsimsScreen() {
                       <Text style={s.actionTxt}>Installer</Text>
                     </TouchableOpacity>
                   )}
-                  {iccid && !isExpired && (
+                  {/* Tous les forfaits ne sont pas rechargeables. On ne masque
+                      l'action que sur un `false` explicite : un forfait inconnu
+                      (ou pas encore charge) reste proposable, et c'est l'ecran de
+                      recharge qui tranchera. */}
+                  {iccid && !isExpired && getPackageTopup(e.package_id) !== false && (
                     <TouchableOpacity
                       style={s.actionBtn}
                       onPress={() => router.push({ pathname: '/esim/topup', params: { iccid, destination: getPackageDisplay(e.package_id).destination } })}

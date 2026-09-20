@@ -12,6 +12,7 @@ export type PackageInfo = {
   validity: string | null
   validity_days: number | null
   is_unlimited: boolean | null
+  available_topup: boolean | null
 }
 
 type CatalogRow = { id: string; region_fr: string | null; region: string | null }
@@ -172,7 +173,7 @@ export function usePackageInfo() {
 
     const { data } = await supabase
       .from('airalo_packages')
-      .select('id, region_fr, region, name, data_amount, data_unit, validity, validity_days, is_unlimited')
+      .select('id, region_fr, region, name, data_amount, data_unit, validity, validity_days, is_unlimited, available_topup')
       .in('id', ids)
 
     const map: Record<string, PackageInfo> = {}
@@ -233,5 +234,16 @@ export function usePackageInfo() {
     }
   }
 
-  return { fetchPackages, getPackageDisplay, loading }
+  // Le forfait accepte-t-il une recharge ? Renvoie `null` tant qu'on ne le sait
+  // pas : forfait encore en cours de chargement, ou package_id disparu de
+  // airalo_packages (les parcours de secours de getPackageDisplay retrouvent une
+  // destination, jamais cette information). Un appelant ne doit masquer une
+  // action de recharge que sur un `false` explicite -- un forfait inconnu reste
+  // proposable, quitte a ce que l'ecran de recharge conclue lui-meme.
+  function getPackageTopup(packageId: string | null | undefined): boolean | null {
+    const pkg = packageId ? packages[packageId] : undefined
+    return pkg ? pkg.available_topup : null
+  }
+
+  return { fetchPackages, getPackageDisplay, getPackageTopup, loading }
 }
