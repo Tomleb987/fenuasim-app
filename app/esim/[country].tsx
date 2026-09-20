@@ -396,7 +396,14 @@ export default function CountryDetail() {
               </View>
 
               <View style={s.features}>
-                {['QR code en 2 min', 'Activable avant le départ', 'Rechargeable'].map((f, i) => (
+                {[
+                  'QR code en 2 min',
+                  'Activable avant le départ',
+                  /* Tous les forfaits ne sont pas rechargeables (ex. Qatar : 6 sur 12).
+                     On n'affiche la promesse que si Airalo la confirme ; un champ absent
+                     (null) n'est pas un "non" et ne doit donc rien afficher. */
+                  ...(sel.available_topup === true ? ['Rechargeable'] : []),
+                ].map((f, i) => (
                   <View key={i} style={s.featRow}>
                     <LinearGradient colors={['#D251D8', '#FD7F3C']} style={s.featCheck}>
                       <Ionicons name="checkmark" size={10} color="#fff" />
