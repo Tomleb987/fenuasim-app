@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase'
 import { COLORS } from '../../constants/theme'
 import { getFR } from '../../lib/regionNames'
 import { getPlanType, getPlanTypeLabel, getPlanTypeIcon, INTERNET_ONLY_CAPTION, INTERNET_ONLY_EXPLANATION, PlanCoverageType } from '../../hooks/usePackageInfo'
+import { fetchOraCatalog, oraUnavailableLabel, ORA_COVERAGE, POLYNESIA_NAME, POLYNESIA_SLUG, type OraCatalog } from '../../lib/oraFly'
 
 const GRAD: Record<string, [string, string]> = {
   'Japan': ['#FF6B6B', '#FF8E53'],
@@ -16,6 +17,7 @@ const GRAD: Record<string, [string, string]> = {
   'France': ['#2980B9', '#6DD5FA'],
   'New Zealand': ['#093028', '#237A57'],
   'United Kingdom': ['#141E30', '#243B55'],
+  [POLYNESIA_NAME]: ['#00B4DB', '#0083B0'],
 }
 function getGrad(regionFr: string): [string, string] { return GRAD[regionFr] ?? ['#D251D8', '#FD7F3C'] }
 
@@ -35,6 +37,9 @@ type Pkg = {
   includes_sms: boolean | null
   networks: string | null
   type: string | null
+  // ORA FLY uniquement : appels et SMS décrits en clair.
+  voice_desc?: string | null
+  sms_desc?: string | null
 }
 
 function getDataLabel(p: Pkg): string {
@@ -80,10 +85,47 @@ export default function CountryDetail() {
   const [dataFilter, setDataFilter] = useState<DataFilter>('all')
   const [durationFilter, setDurationFilter] = useState<DurationFilter>('all')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
+  // Polynésie française : forfaits ORA FLY servis par le site (stock ORA).
+  const [oraCatalog, setOraCatalog] = useState<OraCatalog | null>(null)
 
   useEffect(() => { if (slug) fetchPlans(String(slug)) }, [slug])
 
+  async function fetchOraPlans() {
+    setLoading(true)
+    setError(false)
+    try {
+      const catalog = await fetchOraCatalog()
+      const mapped: Pkg[] = catalog.packages.map(p => ({
+        id: p.id,
+        name: p.name,
+        region_fr: POLYNESIA_NAME,
+        data_amount: p.data_amount,
+        data_unit: p.data_unit === 'GB' ? 'Go' : p.data_unit,
+        validity_days: p.validity_days,
+        validity: null,
+        final_price_xpf: p.final_price_xpf,
+        is_unlimited: false,
+        available_topup: true,
+        operator_name: 'ORA',
+        includes_voice: true,
+        includes_sms: true,
+        networks: `ORA (${ORA_COVERAGE.split(' · ')[1]})`,
+        type: 'local',
+        voice_desc: p.voice_desc,
+        sms_desc: p.sms_desc,
+      }))
+      setOraCatalog(catalog)
+      setPlans(mapped)
+      setSelected(mapped[0]?.id ?? null)
+      setCountryName(POLYNESIA_NAME)
+    } catch {
+      setError(true)
+    }
+    setLoading(false)
+  }
+
   async function fetchPlans(s: string) {
+    if (s === POLYNESIA_SLUG) return fetchOraPlans()
     setLoading(true)
     setError(false)
     const { data, error: err } = await supabase
@@ -141,9 +183,10 @@ export default function CountryDetail() {
   const isLocalPackage = sel?.type === 'local'
   const selPlanType = sel ? getPlanType(sel) : null
   const selIsInternetOnly = selPlanType === 'internet'
+  const unavailable = sel ? oraUnavailableLabel(oraCatalog, sel) : null
 
   function goToPayment() {
-    if (!sel) return
+    if (!sel || unavailable) return
     router.push({
       pathname: '/esim/payment',
       params: {
@@ -329,16 +372,18 @@ export default function CountryDetail() {
                 )}
                 <View style={s.recapRow}>
                   <Text style={s.recapLabel}>{selIsInternetOnly ? 'Appels classiques' : 'Appels'}</Text>
-                  <Text style={s.recapVal}>{sel.includes_voice ? 'Inclus' : 'Non inclus'}</Text>
+                  <Text style={[s.recapVal, sel.voice_desc ? { flex: 1, textAlign: 'right' } : null]}>{sel.voice_desc ?? (sel.includes_voice ? 'Inclus' : 'Non inclus')}</Text>
                 </View>
                 <View style={[s.recapRow, { borderBottomWidth: 0 }]}>
                   <Text style={s.recapLabel}>{selIsInternetOnly ? 'SMS classiques' : 'SMS'}</Text>
-                  <Text style={s.recapVal}>{sel.includes_sms ? 'Inclus' : 'Non inclus'}</Text>
+                  <Text style={[s.recapVal, sel.sms_desc ? { flex: 1, textAlign: 'right' } : null]}>{sel.sms_desc ?? (sel.includes_sms ? 'Inclus' : 'Non inclus')}</Text>
                 </View>
               </View>
 
               <View style={s.features}>
-                {['QR code en 2 min', 'Activable avant le départ', 'Rechargeable'].map((f, i) => (
+                {(oraCatalog
+                  ? ['QR code par email', 'Réseau local polynésien', 'Rechargeable chez ORA']
+                  : ['QR code en 2 min', 'Activable avant le départ', 'Rechargeable']).map((f, i) => (
                   <View key={i} style={s.featRow}>
                     <LinearGradient colors={['#D251D8', '#FD7F3C']} style={s.featCheck}>
                       <Ionicons name="checkmark" size={10} color="#fff" />
@@ -360,9 +405,16 @@ export default function CountryDetail() {
               {getDataLabel(sel)} • {getDurationLabel(sel)} · {getPlanTypeLabel(selPlanType!)}
             </Text>
           </View>
-          <TouchableOpacity style={s.ctaWrap} onPress={goToPayment}>
-            <LinearGradient colors={['#D251D8', '#FD7F3C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.ctaBtn}>
-              <Text style={s.ctaTxt}>Acheter · {Math.round(sel.final_price_xpf).toLocaleString()} XPF</Text>
+          <TouchableOpacity style={s.ctaWrap} onPress={goToPayment} disabled={!!unavailable}>
+            <LinearGradient
+              colors={unavailable ? ['#B5B5B5', '#B5B5B5'] : ['#D251D8', '#FD7F3C']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.ctaBtn}
+            >
+              <Text style={s.ctaTxt}>
+                {unavailable
+                  ? `${unavailable} · ${Math.round(sel.final_price_xpf).toLocaleString()} XPF`
+                  : `Acheter · ${Math.round(sel.final_price_xpf).toLocaleString()} XPF`}
+              </Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>

@@ -12,8 +12,11 @@ import { useDevices } from '../../hooks/useDevices'
 import { useEsimAssignments } from '../../hooks/useEsimAssignments'
 import { usePackageInfo, looksLikeTechnicalSlug } from '../../hooks/usePackageInfo'
 import dayjs from 'dayjs'
+import { fetchMyOraEsims, POLYNESIA_SLUG, type MyOraEsim } from '../../lib/oraFly'
+import OraEsimCard from '../../components/OraEsimCard'
 
 const TOP_DEST = [
+  { nameFR: 'Polynésie', slug: POLYNESIA_SLUG, c1: '#00B4DB', c2: '#0083B0', flag: '🇵🇫' },
   { nameFR: 'Japon', slug: 'japan', c1: '#FF6B6B', c2: '#FF8E53', flag: '🇯🇵' },
   { nameFR: 'Etats-Unis', slug: 'united-states', c1: '#4776E6', c2: '#8E54E9', flag: '🇺🇸' },
   { nameFR: 'Australie', slug: 'australia', c1: '#11998e', c2: '#38ef7d', flag: '🇦🇺' },
@@ -25,6 +28,8 @@ const TOP_DEST = [
 export default function HomeScreen() {
   const router = useRouter()
   const [esims, setEsims] = useState<any[]>([])
+  // eSIM ORA FLY : hors airalo_orders, lues via le site.
+  const [oraEsims, setOraEsims] = useState<MyOraEsim[]>([])
   const { fetchUsage, getPct, getUsedStr, getRemainingStr, isLoading, hasReliableUsage } = useDataUsage()
   const { travelers } = useTravelers()
   const { devices } = useDevices()
@@ -36,6 +41,7 @@ export default function HomeScreen() {
   async function loadData() {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user?.email) return
+    fetchMyOraEsims().then(setOraEsims)
     const { data } = await supabase
       .from('airalo_orders')
       .select('*')
@@ -94,6 +100,15 @@ export default function HomeScreen() {
               </TouchableOpacity>
             ))}
           </ScrollView>
+
+          {oraEsims.length > 0 && (
+            <>
+              <View style={s.secHead}>
+                <Text style={s.secTitle}>Mes eSIM Polynésie</Text>
+              </View>
+              {oraEsims.map(e => <OraEsimCard key={e.id} esim={e} />)}
+            </>
+          )}
 
           {esims.length > 0 && (
             <>

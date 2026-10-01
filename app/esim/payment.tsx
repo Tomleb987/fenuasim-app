@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { COLORS } from '../../constants/theme'
+import { createOraCheckout, isOraPackageId } from '../../lib/oraFly'
 
 export default function PaymentScreen() {
   const router = useRouter()
@@ -24,6 +25,13 @@ export default function PaymentScreen() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { Alert.alert('Erreur', 'Vous devez etre connecte'); return }
+
+      // ORA FLY (Polynésie) : paiement créé par le site, qui gère le stock et la
+      // livraison. L'edge function create-checkout-mobile ne connaît qu'Airalo.
+      if (isOraPackageId(params.packageId)) {
+        await Linking.openURL(await createOraCheckout(params.packageId))
+        return
+      }
 
       const { data, error } = await supabase.functions.invoke('create-checkout-mobile', {
         body: {

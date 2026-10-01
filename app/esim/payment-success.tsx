@@ -7,6 +7,8 @@ import { useRouter, useLocalSearchParams } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
 import { supabase } from '../../lib/supabase'
 import { COLORS } from '../../constants/theme'
+import { isOraPackageId } from '../../lib/oraFly'
+import OraPurchaseResult from '../../components/OraPurchaseResult'
 
 // Phase 4D : aucune contrainte DB ni webhook mobile distinct ne protege
 // aujourd'hui contre un second appel a /api/create-airalo-order pour le
@@ -30,9 +32,15 @@ export default function PaymentSuccess() {
   const [pkg, setPkg] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
 
+  // ORA FLY : livrée par le webhook du site depuis le stock ORA, jamais par
+  // un appel de création depuis l'app.
+  const isOra = isOraPackageId(package_id)
+
   useEffect(() => {
-    if (session_id && package_id) createEsim()
+    if (session_id && package_id && !isOra) createEsim()
   }, [session_id, package_id])
+
+  if (isOra && session_id) return <OraPurchaseResult sessionId={String(session_id)} />
 
   async function createEsim() {
     setLoading(true)

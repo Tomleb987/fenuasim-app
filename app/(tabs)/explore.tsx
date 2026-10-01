@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { COLORS } from '../../constants/theme'
 import { getFR } from '../../lib/regionNames'
+import { fetchOraCatalog, POLYNESIA_NAME, POLYNESIA_SLUG } from '../../lib/oraFly'
 
 const TOP = ["France","Canada","Etats-Unis","Australie","Nouvelle-Zelande"]
 
@@ -35,7 +36,7 @@ export default function ExploreScreen() {
     if (typeFilter !== 'all') list = list.filter(d => d.type === typeFilter)
     if (search.trim()) {
       const q = normalize(search)
-      list = list.filter(d => normalize(d.nameFR).includes(q))
+      list = list.filter(d => normalize(d.nameFR).includes(q) || (d.aliases ?? []).some((a: string) => a.includes(q)))
     }
     setFiltered(list)
   }, [search, destinations, typeFilter])
@@ -46,6 +47,10 @@ export default function ExploreScreen() {
       .from('airalo_packages')
       .select('id, name, region_fr, region, slug, data_amount, data_unit, validity, validity_days, final_price_xpf, is_unlimited, type, flag_url, status')
       .order('final_price_xpf', { ascending: true })
+
+    // Polynésie française : forfaits ORA FLY, hors catalogue Airalo, servis par
+    // le site. Une erreur réseau ne doit pas priver l'utilisateur du reste.
+    const ora = await fetchOraCatalog().catch(() => null)
 
     if (data) {
       const valid = data.filter(p => p.final_price_xpf && p.final_price_xpf > 0)
@@ -69,6 +74,19 @@ export default function ExploreScreen() {
           map[nameFR].count++
         }
       })
+      if (ora && ora.packages.length > 0) {
+        map[POLYNESIA_NAME] = {
+          nameFR: POLYNESIA_NAME,
+          slug: POLYNESIA_SLUG,
+          type: 'local',
+          flag_url: null,
+          minPrice: Math.min(...ora.packages.map(p => p.final_price_xpf)),
+          maxDays: Math.max(...ora.packages.map(p => p.validity_days)),
+          count: ora.packages.length,
+          comingSoon: !ora.salesOpen,
+          aliases: ['polynesie', 'tahiti', 'moorea', 'bora bora', 'fenua', 'papeete', 'french polynesia'],
+        }
+      }
       const list = Object.values(map).sort((a,b) => a.nameFR.localeCompare(b.nameFR, 'fr'))
       setDestinations(list)
       setFiltered(list)
@@ -164,6 +182,11 @@ function DestCard({ d, router, top = false }: { d: any, router: any, top?: boole
             {top && (
               <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.topBadge}>
                 <Text style={s.topBadgeTxt}>TOP</Text>
+              </LinearGradient>
+            )}
+            {d.comingSoon && (
+              <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.topBadge}>
+                <Text style={s.topBadgeTxt}>PROCHAINEMENT</Text>
               </LinearGradient>
             )}
           </View>
