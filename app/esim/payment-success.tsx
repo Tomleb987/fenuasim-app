@@ -8,6 +8,8 @@ import { supabase } from '../../lib/supabase'
 import { COLORS, RADIUS, SHADOW } from '../../constants/theme'
 import EsimInstallBlock, { hasInstallData } from '../../components/EsimInstallBlock'
 import { closeCheckoutBrowser } from '../../lib/checkout'
+import { isOraPackageId } from '../../lib/oraFly'
+import OraPurchaseResult from '../../components/OraPurchaseResult'
 
 // 2026-09-04 : cet ecran ne declenche plus rien. Auparavant il appelait
 // lui-meme fenuasim.com/api/create-airalo-order depuis le client, sans
@@ -36,14 +38,23 @@ export default function PaymentSuccess() {
   const [techRef, setTechRef] = useState<string | null>(null)
   const cancelled = useRef(false)
 
+  // ORA FLY : livrée par le webhook du site depuis le stock ORA, jamais par
+  // un appel de création depuis l'app.
+  const isOra = isOraPackageId(package_id)
+
   useEffect(() => {
     cancelled.current = false
     // Retour de Stripe : sur iOS le SFSafariViewController reste presente
     // derriere l'app, on le referme. Sans effet sur Android (voir lib/checkout).
+    // Vaut pour les deux filieres, ORA comme Airalo.
     closeCheckoutBrowser()
-    if (session_id) watchOrder()
+    // ORA FLY est livree par le webhook du site depuis son propre stock :
+    // le suivi de commande Airalo ci-dessous ne la concerne pas.
+    if (session_id && !isOra) watchOrder()
     return () => { cancelled.current = true }
   }, [session_id, package_id])
+
+  if (isOra && session_id) return <OraPurchaseResult sessionId={String(session_id)} />
 
   async function watchOrder() {
     setLoading(true)

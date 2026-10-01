@@ -4,7 +4,7 @@ export const REGION_TRANSLATIONS: Record<string, string> = {
   "Discover Global":"Monde","Global":"Monde","Asia":"Asie","Europe":"Europe","Japan":"Japon",
   "Japon":"Japon","Canary Islands":"Iles Canaries","South Korea":"Coree du Sud",
   "Hong Kong":"Hong Kong","United States":"Etats-Unis","Australia":"Australie",
-  "New Zealand":"Nouvelle-Zelande","Mexico":"Mexique","Fiji":"Fidji",
+  "New Zealand":"Nouvelle-Zelande","French Polynesia":"Polynésie française","Mexico":"Mexique","Fiji":"Fidji",
   "Thailand":"Thailande","Singapore":"Singapour","Malaysia":"Malaisie",
   "Indonesia":"Indonesie","Philippines":"Philippines","Vietnam":"Viet Nam",
   "India":"Inde","China":"Chine","Taiwan":"Taiwan","United Kingdom":"Royaume-Uni",
