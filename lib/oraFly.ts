@@ -58,12 +58,16 @@ export async function fetchOraCatalog(): Promise<OraCatalog> {
   return { salesOpen: !!data.salesOpen, packages: data.packages ?? [] }
 }
 
-/** Crée la session Stripe ; renvoie l'URL de paiement. */
-export async function createOraCheckout(packageId: string, promoCode?: string): Promise<string> {
+/**
+ * Crée la session Stripe ; renvoie l'URL de paiement.
+ * Les codes promo ne s'appliquent pas aux forfaits ORA FLY : ils sont vendus
+ * depuis un stock achete d'avance, a prix ferme.
+ */
+export async function createOraCheckout(packageId: string): Promise<string> {
   const data = await readJson(await fetch(`${SITE_URL}/api/ora/mobile-checkout`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
-    body: JSON.stringify({ packageId, promoCode }),
+    body: JSON.stringify({ packageId }),
   }))
   if (!data.url) throw new Error('Lien de paiement manquant')
   return data.url
