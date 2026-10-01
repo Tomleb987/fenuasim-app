@@ -9,6 +9,7 @@ import { COLORS, RADIUS, SHADOW, TYPO } from '../../constants/theme'
 import { useCurrency, toDisplayAmount, formatAmount, applyDiscountTo } from '../../lib/currency'
 import { validateEsimPromoCode } from '../../hooks/usePromoCode'
 import { openCheckout } from '../../lib/checkout'
+import { createOraCheckout, isOraPackageId } from '../../lib/oraFly'
 
 export default function PaymentScreen() {
   const router = useRouter()
@@ -30,6 +31,10 @@ export default function PaymentScreen() {
     data: string
     country: string
   }>()
+
+  // Les forfaits ORA FLY sont vendus depuis un stock achete d'avance, a prix
+  // ferme : aucun code promo ne s'y applique.
+  const isOra = isOraPackageId(params.packageId)
 
   // La remise s'applique sur le montant DEJA converti dans la devise
   // d'affichage, exactement comme le fait l'edge function sur le prix en euros.
@@ -59,6 +64,15 @@ export default function PaymentScreen() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { Alert.alert('Erreur', 'Vous devez être connecté'); return }
+
+      // ORA FLY (Polynésie) : paiement créé par le site, qui gère le stock et la
+      // livraison. L'edge function create-checkout-mobile ne connaît qu'Airalo.
+      // Le paiement s'ouvre dans le navigateur integre, comme la filiere Airalo :
+      // c'est lui qui ramene sur le deep link de retour.
+      if (isOra) {
+        await openCheckout(await createOraCheckout(params.packageId))
+        return
+      }
 
       const { data, error } = await supabase.functions.invoke('create-checkout-mobile', {
         body: {
@@ -132,6 +146,9 @@ export default function PaymentScreen() {
 
         <View style={s.promoCard}>
           <Text style={s.promoLabel}>Code promo</Text>
+          {isOra ? (
+            <Text style={s.promoNote}>Les codes promo ne s'appliquent pas aux forfaits ORA FLY.</Text>
+          ) : (
           <View style={s.promoRow}>
             <TextInput
               style={s.promoInput}
@@ -146,8 +163,9 @@ export default function PaymentScreen() {
               {promoStatus === 'loading' ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.promoBtnTxt}>Appliquer</Text>}
             </TouchableOpacity>
           </View>
-          {promoStatus === 'valid' && <Text style={s.promoValid}>Code appliqué avec succès</Text>}
-          {promoStatus === 'invalid' && <Text style={s.promoInvalid}>{promoError}</Text>}
+          )}
+          {!isOra && promoStatus === 'valid' && <Text style={s.promoValid}>Code appliqué avec succès</Text>}
+          {!isOra && promoStatus === 'invalid' && <Text style={s.promoInvalid}>{promoError}</Text>}
         </View>
 
         <View style={s.infoBox}>
@@ -198,6 +216,7 @@ const s = StyleSheet.create({
   promoInput:{flex:1,backgroundColor:COLORS.bg,borderRadius:12,paddingHorizontal:14,paddingVertical:12,fontSize:14,color:COLORS.text,borderWidth:1,borderColor:COLORS.border},
   promoBtn:{backgroundColor:COLORS.violet,borderRadius:12,paddingHorizontal:16,justifyContent:'center',alignItems:'center'},
   promoBtnTxt:{color:'#fff',fontWeight:'700',fontSize:13},
+  promoNote:{fontSize:13,color:COLORS.textMuted,lineHeight:18},
   promoValid:{fontSize:12,color:COLORS.success,marginTop:8,fontWeight:'600'},
   promoInvalid:{fontSize:12,color:'#B00020',marginTop:8,fontWeight:'600'},
   infoBox:{flexDirection:'row',alignItems:'flex-start',gap:10,backgroundColor:'rgba(210,81,216,0.06)',borderRadius:RADIUS.md,padding:12,marginBottom:12},
