@@ -19,6 +19,8 @@ import { requireAuth } from '../../lib/authGate'
 import { getEsimStatus } from '../../lib/esimStatus'
 import { hasInstallData } from '../../components/EsimInstallBlock'
 import dayjs from 'dayjs'
+import { fetchMyOraEsims, POLYNESIA_SLUG, type MyOraEsim } from '../../lib/oraFly'
+import OraEsimCard from '../../components/OraEsimCard'
 
 // Ordre d'affichage voulu pour les forfaits regionaux ; seules les regions
 // reellement presentes et actives en base (verifie par requete reelle) sont
@@ -57,6 +59,7 @@ const QUICK_ACTIONS: QuickAction[] = [
 ]
 
 const TOP_DEST = [
+  { nameFR: 'Polynésie', slug: POLYNESIA_SLUG, c1: '#00B4DB', c2: '#0083B0', flag: '🇵🇫' },
   { nameFR: 'Japon', slug: 'japan', c1: '#FF6B6B', c2: '#FF8E53', flag: '🇯🇵' },
   { nameFR: 'Etats-Unis', slug: 'united-states', c1: '#4776E6', c2: '#8E54E9', flag: '🇺🇸' },
   { nameFR: 'Australie', slug: 'australia', c1: '#11998e', c2: '#38ef7d', flag: '🇦🇺' },
@@ -105,6 +108,8 @@ export default function HomeScreen() {
   const { session, isGuest } = useSession()
   const [esims, setEsims] = useState<any[]>([])
   const [regions, setRegions] = useState<{ nameFR: string; slug: string; minPrice: number; key: string }[]>([])
+  // eSIM ORA FLY : hors airalo_orders, lues via le site.
+  const [oraEsims, setOraEsims] = useState<MyOraEsim[]>([])
   const { fetchUsage, getPct, getUsedStr, getRemainingStr, isLoading, hasReliableUsage, getVoiceSmsUsage } = useDataUsage()
   const { travelers } = useTravelers()
   const { devices } = useDevices()
@@ -145,6 +150,7 @@ export default function HomeScreen() {
   async function loadData() {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user?.email) return
+    fetchMyOraEsims().then(setOraEsims)
     const { data } = await supabase
       .from('airalo_orders')
       .select('*')
@@ -291,6 +297,15 @@ export default function HomeScreen() {
                   </TouchableOpacity>
                 ))}
               </ScrollView>
+            </>
+          )}
+
+          {oraEsims.length > 0 && (
+            <>
+              <View style={s.secHead}>
+                <Text style={s.secTitle}>Mes eSIM Polynésie</Text>
+              </View>
+              {oraEsims.map(e => <OraEsimCard key={e.id} esim={e} />)}
             </>
           )}
 

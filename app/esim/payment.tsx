@@ -9,6 +9,7 @@ import { COLORS, RADIUS, SHADOW, TYPO } from '../../constants/theme'
 import { useCurrency, toDisplayAmount, formatAmount, applyDiscountTo } from '../../lib/currency'
 import { validateEsimPromoCode } from '../../hooks/usePromoCode'
 import { openCheckout } from '../../lib/checkout'
+import { createOraCheckout, isOraPackageId } from '../../lib/oraFly'
 
 export default function PaymentScreen() {
   const router = useRouter()
@@ -59,6 +60,19 @@ export default function PaymentScreen() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { Alert.alert('Erreur', 'Vous devez être connecté'); return }
+
+      // ORA FLY (Polynésie) : paiement créé par le site, qui gère le stock et la
+      // livraison. L'edge function create-checkout-mobile ne connaît qu'Airalo.
+      // Le paiement s'ouvre dans le navigateur integre, comme la filiere Airalo :
+      // c'est lui qui ramene sur le deep link de retour.
+      if (isOraPackageId(params.packageId)) {
+        const oraUrl = await createOraCheckout(
+          params.packageId,
+          promoStatus === 'valid' ? promoCode.trim() : undefined
+        )
+        await openCheckout(oraUrl)
+        return
+      }
 
       const { data, error } = await supabase.functions.invoke('create-checkout-mobile', {
         body: {
