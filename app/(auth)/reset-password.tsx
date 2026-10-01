@@ -216,7 +216,7 @@ const s = StyleSheet.create({
   form: { flex: 1, padding: 24, backgroundColor: '#fff' },
   formTitle: { fontSize: 22, fontWeight: '800', color: COLORS.text, marginBottom: 12 },
   desc: { fontSize: 14, color: COLORS.textMuted, lineHeight: 20, marginBottom: 24 },
-  label: { fontSize: 12, fontWeight: '700', color: '#999', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 8 },
+  label: { fontSize: 12, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 8 },
   inputWrap: { backgroundColor: COLORS.bg, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, borderWidth: 1, borderColor: COLORS.border, marginBottom: 16 },
   input: { fontSize: 15, color: COLORS.text },
   errorTxt: { color: '#B00020', fontSize: 13, marginBottom: 8, marginTop: -8 },

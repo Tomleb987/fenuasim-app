@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import { COLORS } from '../../constants/theme'
+import { COLORS, RADIUS, SHADOW, TYPO } from '../../constants/theme'
 
 const FAQ: { q: string; a: string }[] = [
   {
@@ -79,11 +79,11 @@ export default function FaqScreen() {
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
-  hero: { padding: 20, paddingBottom: 24 },
+  hero: { padding: 20, paddingBottom: 24, borderBottomLeftRadius: RADIUS.xl, borderBottomRightRadius: RADIUS.xl, overflow: 'hidden' },
   backBtn: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, width: 36, height: 36, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  heroTitle: { color: '#fff', fontSize: 22, fontWeight: '800' },
+  heroTitle: { color: '#fff', ...TYPO.screenTitle },
   scroll: { flex: 1, padding: 16 },
-  card: { backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 8, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
+  card: { backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 8, ...SHADOW.card },
   cardHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
   question: { flex: 1, fontSize: 14, fontWeight: '700', color: COLORS.text },
   answer: { fontSize: 13, color: COLORS.textMuted, lineHeight: 20, marginTop: 10 },

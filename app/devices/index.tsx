@@ -1,16 +1,20 @@
 import React from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import { COLORS } from '../../constants/theme'
+import { COLORS, RADIUS, SHADOW, TYPO } from '../../constants/theme'
 import { useDevices } from '../../hooks/useDevices'
 import { useTravelers } from '../../hooks/useTravelers'
 import { Device } from '../../types'
 
 export default function DevicesScreen() {
   const router = useRouter()
+  // Android SDK 35+ impose l'edge-to-edge : la barre de navigation systeme se
+  // superpose au bas de l'ecran. Sans cet inset, le bouton principal passe
+  // partiellement sous la barre de gestes ou les 3 boutons.
+  const insets = useSafeAreaInsets()
   const { devices, loading: loadingDevices } = useDevices()
   const { travelers, loading: loadingTravelers } = useTravelers()
   const loading = loadingDevices || loadingTravelers
@@ -39,7 +43,11 @@ export default function DevicesScreen() {
           <ActivityIndicator color={COLORS.violet} size="large" />
         </View>
       ) : (
-        <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
+        <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}
+          // La barre d'action est en position absolue : sans cette reserve, le
+          // dernier element de la liste reste masque dessous.
+          contentContainerStyle={{ paddingBottom: 100 + insets.bottom }}
+        >
           {devices.length === 0 ? (
             <View style={s.empty}>
               <View style={s.emptyIcon}>
@@ -77,10 +85,10 @@ export default function DevicesScreen() {
         </ScrollView>
       )}
 
-      <View style={s.ctaBar}>
+      <View style={[s.ctaBar, { paddingBottom: 16 + insets.bottom }]}>
         <TouchableOpacity style={s.ctaWrap} onPress={() => router.push('/devices/edit')}>
           <View style={s.cta}>
-            <Ionicons name="add" size={20} color="#fff" />
+            <Ionicons name="add" size={20} color={COLORS.violet} />
             <Text style={s.ctaTxt}>Ajouter un appareil</Text>
           </View>
         </TouchableOpacity>
@@ -91,22 +99,22 @@ export default function DevicesScreen() {
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
-  hero: { padding: 20, paddingBottom: 24 },
+  hero: { padding: 20, paddingBottom: 24, borderBottomLeftRadius: RADIUS.xl, borderBottomRightRadius: RADIUS.xl, overflow: 'hidden' },
   backBtn: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, width: 36, height: 36, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  heroTitle: { color: '#fff', fontSize: 22, fontWeight: '800' },
+  heroTitle: { color: '#fff', ...TYPO.screenTitle },
   loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   scroll: { flex: 1, padding: 16 },
   empty: { alignItems: 'center', padding: 30, backgroundColor: '#fff', borderRadius: 16, gap: 6 },
   emptyIcon: { width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(210,81,216,0.1)', justifyContent: 'center', alignItems: 'center', marginBottom: 6 },
   emptyTitle: { fontSize: 15, fontWeight: '700', color: COLORS.text },
   emptyTxt: { fontSize: 13, color: COLORS.textMuted, textAlign: 'center', lineHeight: 19 },
-  groupTitle: { fontSize: 12, fontWeight: '700', color: '#999', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 8 },
-  card: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 16, padding: 14, marginBottom: 8, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
+  groupTitle: { fontSize: 12, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 8 },
+  card: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 16, padding: 14, marginBottom: 8, ...SHADOW.card },
   deviceIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(210,81,216,0.1)', justifyContent: 'center', alignItems: 'center' },
   cardName: { fontSize: 14, fontWeight: '700', color: COLORS.text },
   cardSub: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
   ctaBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', padding: 16, borderTopWidth: 1, borderTopColor: COLORS.border },
-  ctaWrap: { borderRadius: 14, overflow: 'hidden', backgroundColor: COLORS.violet },
+  ctaWrap: { borderRadius: 14, overflow: 'hidden', backgroundColor: '#fff', borderWidth: 1.5, borderColor: COLORS.violet },
   cta: { padding: 15, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
-  ctaTxt: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  ctaTxt: { color: COLORS.violet, fontSize: 15, fontWeight: '800' },
 })

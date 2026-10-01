@@ -1,13 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, FlatList, Modal, ScrollView } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, FlatList, Modal, ScrollView, ImageBackground } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { supabase } from '../../lib/supabase'
-import { COLORS } from '../../constants/theme'
+import { COLORS, RADIUS, SHADOW, TYPO } from '../../constants/theme'
+import { destinationImageUrl } from '../../lib/destinationImage'
 import { getFR } from '../../lib/regionNames'
-import { getPlanType, getPlanTypeLabel, getPlanTypeIcon, INTERNET_ONLY_CAPTION, INTERNET_ONLY_EXPLANATION, PlanCoverageType } from '../../hooks/usePackageInfo'
+import { getPlanType, getPlanTypeLabel, getPlanTypeIcon, parseVoiceSmsVolume, INTERNET_ONLY_CAPTION, INTERNET_ONLY_EXPLANATION, PlanCoverageType } from '../../hooks/usePackageInfo'
+import { useCurrency } from '../../lib/currency'
+import { useSession } from '../../hooks/useSession'
+import { requireAuth } from '../../lib/authGate'
 
 const GRAD: Record<string, [string, string]> = {
   'Japan': ['#FF6B6B', '#FF8E53'],
@@ -59,6 +63,8 @@ function formatNetworkEntry(entry: string): string {
 
 type DataFilter = 'all' | 'low' | 'high' | 'unlimited'
 type DurationFilter = 'all' | 'short' | 'medium' | 'long'
+const GRID_FILLER = { id: '__filler__' } as Pkg
+
 type TypeFilter = 'all' | 'internet' | 'full'
 
 function matchesTypeFilter(t: PlanCoverageType, f: TypeFilter): boolean {
@@ -69,7 +75,13 @@ function matchesTypeFilter(t: PlanCoverageType, f: TypeFilter): boolean {
 
 export default function CountryDetail() {
   const router = useRouter()
+  // Android SDK 35+ impose l'edge-to-edge : la barre de navigation systeme se
+  // superpose au bas de l'ecran. Sans cet inset, le bouton principal passe
+  // partiellement sous la barre de gestes ou les 3 boutons.
+  const insets = useSafeAreaInsets()
+  const { formatXpf } = useCurrency()
   const { country: slug } = useLocalSearchParams<{ country: string }>()
+  const { session } = useSession()
   const [plans, setPlans] = useState<Pkg[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -91,6 +103,7 @@ export default function CountryDetail() {
       .select('id, name, region_fr, data_amount, data_unit, validity_days, validity, final_price_xpf, is_unlimited, available_topup, operator_name, includes_voice, includes_sms, networks, type')
       .eq('status', 'active')
       .eq('slug', s)
+      .gt('final_price_xpf', 0)
       .order('final_price_xpf', { ascending: true })
     if (err) { setError(true); setLoading(false); return }
     if (data && data.length > 0) {
@@ -105,7 +118,12 @@ export default function CountryDetail() {
         return (a.final_price_xpf ?? 0) - (b.final_price_xpf ?? 0)
       })
       setPlans(sorted as Pkg[])
-      setSelected(sorted[0].id)
+      // Preselectionne le forfait au prix le plus bas (coherent avec le "Des X
+      // XPF" affiche sur l'accueil/explorer), pas simplement le premier de la
+      // liste triee par volume de donnees -- sinon le prix mis en avant ici
+      // peut etre plus eleve que celui annonce plus tot dans le parcours.
+      const cheapest = sorted.reduce((min, p) => (p.final_price_xpf ?? 0) < (min.final_price_xpf ?? 0) ? p : min, sorted[0])
+      setSelected(cheapest.id)
       setCountryName(sorted[0].region_fr ?? s)
     } else {
       setPlans([])
@@ -129,6 +147,14 @@ export default function CountryDetail() {
     })
   }, [plans, dataFilter, durationFilter, typeFilter])
 
+  // En grille a 2 colonnes, une derniere ligne a un seul element voit sa carte
+  // s'etirer sur toute la largeur (flex: 1 sans voisin) et rompre l'alignement.
+  // On complete donc avec un element fantome, rendu comme un espace vide.
+  const gridPlans = useMemo(
+    () => (filteredPlans.length % 2 === 1 ? [...filteredPlans, GRID_FILLER] : filteredPlans),
+    [filteredPlans]
+  )
+
   const showTypeFilter = useMemo(() => new Set(plans.map(getPlanType)).size > 1, [plans])
 
   const sel = plans.find(p => p.id === selected)
@@ -140,10 +166,16 @@ export default function CountryDetail() {
   const isMultiNetwork = networks.length > 1
   const isLocalPackage = sel?.type === 'local'
   const selPlanType = sel ? getPlanType(sel) : null
+  const selVolume = sel ? parseVoiceSmsVolume(sel.name) : undefined
   const selIsInternetOnly = selPlanType === 'internet'
 
   function goToPayment() {
     if (!sel) return
+    // Le catalogue est ouvert a tous, le paiement non : livrer une eSIM exige un
+    // compte (c'est l'adresse email de livraison). On amene donc le visiteur a la
+    // connexion en gardant le chemin de ce forfait, pour le ramener ici -- et non
+    // sur l'accueil -- une fois son compte cree.
+    if (!requireAuth(router, session, `/esim/${slug}`)) return
     router.push({
       pathname: '/esim/payment',
       params: {
@@ -161,6 +193,19 @@ export default function CountryDetail() {
     <SafeAreaView style={s.safe} edges={['top']}>
 
       <LinearGradient colors={grad} style={s.hero}>
+        {/* Photo de la destination quand la banque en a une (53,5 % des slugs
+            actifs). Le degrade par region reste dessous : un slug non couvert
+            garde donc un hero colore plutot qu'un aplat gris. */}
+        <ImageBackground
+          source={{ uri: destinationImageUrl(String(slug), 900, 480) ?? undefined }}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        >
+          <LinearGradient
+            colors={['rgba(35,5,45,0.55)', 'rgba(35,5,45,0.28)', 'rgba(35,5,45,0.52)']}
+            style={StyleSheet.absoluteFill}
+          />
+        </ImageBackground>
         <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color="#fff" />
         </TouchableOpacity>
@@ -224,8 +269,10 @@ export default function CountryDetail() {
       ) : (
         <FlatList
           style={s.forfaitsPage}
-          data={filteredPlans}
+          data={gridPlans}
           keyExtractor={p => p.id}
+          numColumns={2}
+          columnWrapperStyle={{ gap: 10 }}
           contentContainerStyle={{ paddingBottom: 170 }}
           initialNumToRender={12}
           windowSize={7}
@@ -256,7 +303,7 @@ export default function CountryDetail() {
                     </View>
                     <Text style={s.filterLabel}>Durée</Text>
                     <View style={s.filterRow}>
-                      {([['all', 'Toutes'], ['short', '≤ 7 j'], ['medium', '15 j'], ['long', '30 j+']] as [DurationFilter, string][]).map(([key, label]) => (
+                      {([['all', 'Toutes'], ['short', '≤ 7 j'], ['medium', '8-29 j'], ['long', '30 j+']] as [DurationFilter, string][]).map(([key, label]) => (
                         <TouchableOpacity key={key} style={[s.filterChip, durationFilter === key && s.filterChipSel]} onPress={() => setDurationFilter(key)}>
                           <Text style={[s.filterChipTxt, durationFilter === key && s.filterChipTxtSel]}>{label}</Text>
                         </TouchableOpacity>
@@ -268,24 +315,31 @@ export default function CountryDetail() {
             ) : null
           }
           renderItem={({ item: p }) => {
+            if (p.id === GRID_FILLER.id) return <View style={s.planFiller} />
             const planType = getPlanType(p)
+            const volume = parseVoiceSmsVolume(p.name)
             const isSel = selected === p.id
             return (
               <TouchableOpacity
-                style={[s.planRow, isSel && s.planRowSel]}
+                style={[s.planCard, isSel && s.planCardSel]}
                 onPress={() => setSelected(p.id)}
+                activeOpacity={0.85}
               >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                  <Ionicons name={isSel ? 'radio-button-on' : 'radio-button-off'} size={20} color={isSel ? COLORS.violet : '#ccc'} />
-                  <Text style={s.planRowData}>{getDataLabel(p)}</Text>
-                  <Text style={s.planRowDuration}>{getDurationLabel(p)}</Text>
-                  <Text style={s.planRowPrice}>{Math.round(p.final_price_xpf).toLocaleString()} XPF</Text>
+                <View style={s.planCardHead}>
+                  <Text style={s.planCardData}>{getDataLabel(p)}</Text>
+                  {isSel && (
+                    <View style={s.planCheck}>
+                      <Ionicons name="checkmark" size={12} color="#fff" />
+                    </View>
+                  )}
                 </View>
-                <View style={s.planRowTypeWrap}>
-                  <Ionicons name={getPlanTypeIcon(planType)} size={12} color={COLORS.violet} />
-                  <Text style={s.planRowTypeTxt}>{getPlanTypeLabel(planType)}</Text>
-                  {planType === 'internet' && <Text style={s.planRowCaption}>{INTERNET_ONLY_CAPTION}</Text>}
+                <Text style={s.planCardDuration}>{getDurationLabel(p)}</Text>
+                <View style={s.planCardTypeWrap}>
+                  <Ionicons name={getPlanTypeIcon(planType)} size={13} color={COLORS.violet} />
+                  <Text style={s.planCardTypeTxt}>{getPlanTypeLabel(planType, volume)}</Text>
                 </View>
+                {planType === 'internet' && <Text style={s.planCardCaption}>{INTERNET_ONLY_CAPTION}</Text>}
+                <Text style={s.planCardPrice}>{formatXpf(p.final_price_xpf)}</Text>
               </TouchableOpacity>
             )
           }}
@@ -304,7 +358,7 @@ export default function CountryDetail() {
                   <Text style={s.recapLabel}>Type</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                     <Ionicons name={getPlanTypeIcon(selPlanType!)} size={13} color={COLORS.violet} />
-                    <Text style={s.recapVal}>{getPlanTypeLabel(selPlanType!)}</Text>
+                    <Text style={s.recapVal}>{getPlanTypeLabel(selPlanType!, selVolume)}</Text>
                   </View>
                 </View>
                 {!isLocalPackage && (
@@ -329,16 +383,27 @@ export default function CountryDetail() {
                 )}
                 <View style={s.recapRow}>
                   <Text style={s.recapLabel}>{selIsInternetOnly ? 'Appels classiques' : 'Appels'}</Text>
-                  <Text style={s.recapVal}>{sel.includes_voice ? 'Inclus' : 'Non inclus'}</Text>
+                  <Text style={s.recapVal}>
+                    {sel.includes_voice ? (selVolume?.minutes != null ? `${selVolume.minutes} min` : 'Inclus') : 'Non inclus'}
+                  </Text>
                 </View>
                 <View style={[s.recapRow, { borderBottomWidth: 0 }]}>
                   <Text style={s.recapLabel}>{selIsInternetOnly ? 'SMS classiques' : 'SMS'}</Text>
-                  <Text style={s.recapVal}>{sel.includes_sms ? 'Inclus' : 'Non inclus'}</Text>
+                  <Text style={s.recapVal}>
+                    {sel.includes_sms ? (selVolume?.sms != null ? `${selVolume.sms} SMS` : 'Inclus') : 'Non inclus'}
+                  </Text>
                 </View>
               </View>
 
               <View style={s.features}>
-                {['QR code en 2 min', 'Activable avant le départ', 'Rechargeable'].map((f, i) => (
+                {[
+                  'QR code en 2 min',
+                  'Activable avant le départ',
+                  /* Tous les forfaits ne sont pas rechargeables (ex. Qatar : 6 sur 12).
+                     On n'affiche la promesse que si Airalo la confirme ; un champ absent
+                     (null) n'est pas un "non" et ne doit donc rien afficher. */
+                  ...(sel.available_topup === true ? ['Rechargeable'] : []),
+                ].map((f, i) => (
                   <View key={i} style={s.featRow}>
                     <LinearGradient colors={['#D251D8', '#FD7F3C']} style={s.featCheck}>
                       <Ionicons name="checkmark" size={10} color="#fff" />
@@ -353,16 +418,16 @@ export default function CountryDetail() {
       )}
 
       {sel && !loading && !error && plans.length > 0 && (
-        <View style={s.ctaBar}>
+        <View style={[s.ctaBar, { paddingBottom: 16 + insets.bottom }]}>
           <View style={s.selectionSummary}>
             <Text style={s.selectionSummaryTitle}>Votre choix</Text>
             <Text style={s.selectionSummaryTxt}>
-              {getDataLabel(sel)} • {getDurationLabel(sel)} · {getPlanTypeLabel(selPlanType!)}
+              {getDataLabel(sel)} • {getDurationLabel(sel)} · {getPlanTypeLabel(selPlanType!, selVolume)}
             </Text>
           </View>
           <TouchableOpacity style={s.ctaWrap} onPress={goToPayment}>
             <LinearGradient colors={['#D251D8', '#FD7F3C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.ctaBtn}>
-              <Text style={s.ctaTxt}>Acheter · {Math.round(sel.final_price_xpf).toLocaleString()} XPF</Text>
+              <Text style={s.ctaTxt}>Acheter · {formatXpf(sel.final_price_xpf)}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -397,10 +462,10 @@ export default function CountryDetail() {
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
-  hero: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  backBtn: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, width: 34, height: 34, justifyContent: 'center', alignItems: 'center' },
+  hero: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 22, flexDirection: 'row', alignItems: 'center', gap: 12, overflow: 'hidden' },
+  backBtn: { backgroundColor: 'rgba(255,255,255,0.26)', borderRadius: 20, width: 38, height: 38, justifyContent: 'center', alignItems: 'center' },
   heroContent: { flex: 1 },
-  heroTitle: { color: '#fff', fontSize: 20, fontWeight: '800' },
+  heroTitle: { color: '#fff', ...TYPO.screenTitle },
   heroSub: { color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: 3 },
   tabs: { backgroundColor: '#fff', flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
   tabBtn: { flex: 1, paddingVertical: 10, alignItems: 'center' },
@@ -415,21 +480,28 @@ const s = StyleSheet.create({
   forfaitsPage: { flex: 1, paddingHorizontal: 16, paddingTop: 12 },
 
   filtersWrap: { marginBottom: 12 },
-  filterLabel: { fontSize: 11, fontWeight: '700', color: '#999', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 6, marginTop: 6 },
+  filterLabel: { fontSize: 11, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 6, marginTop: 6 },
   filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
   filterChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: '#fff' },
   filterChipSel: { borderColor: COLORS.violet, backgroundColor: 'rgba(210,81,216,0.08)' },
   filterChipTxt: { fontSize: 12, fontWeight: '600', color: '#888' },
   filterChipTxtSel: { color: COLORS.violet },
 
-  planRow: { backgroundColor: '#fff', borderRadius: 14, paddingVertical: 13, paddingHorizontal: 14, marginBottom: 8, borderWidth: 1.5, borderColor: COLORS.border },
-  planRowSel: { borderColor: COLORS.violet, backgroundColor: 'rgba(210,81,216,0.05)' },
-  planRowData: { fontSize: 14, fontWeight: '700', color: COLORS.text, width: 72 },
-  planRowDuration: { fontSize: 13, color: COLORS.textMuted, flex: 1 },
-  planRowPrice: { fontSize: 14, fontWeight: '800', color: COLORS.violet },
-  planRowTypeWrap: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 5, marginTop: 6, marginLeft: 30 },
-  planRowTypeTxt: { fontSize: 11, fontWeight: '700', color: COLORS.violet },
-  planRowCaption: { fontSize: 11, color: COLORS.textMuted },
+  // Grille 2 colonnes : flex 1 plutot qu'une largeur en pourcentage, pour que
+  // l'ecart soit gere par columnWrapperStyle et reste constant quel que soit
+  // l'ecran. minHeight garde les deux cartes d'une meme ligne alignees quand
+  // l'une porte une legende "internet uniquement" et pas l'autre.
+  planCard: { flex: 1, minHeight: 132, backgroundColor: '#fff', borderRadius: RADIUS.lg, padding: 14, marginBottom: 10, borderWidth: 1.5, borderColor: 'transparent', ...SHADOW.card },
+  planCardSel: { borderColor: COLORS.violet, backgroundColor: 'rgba(210,81,216,0.05)' },
+  planFiller: { flex: 1 },
+  planCardHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  planCardData: { flex: 1, fontSize: 20, fontWeight: '800', color: COLORS.text, letterSpacing: -0.3 },
+  planCheck: { width: 20, height: 20, borderRadius: 10, backgroundColor: COLORS.violet, alignItems: 'center', justifyContent: 'center' },
+  planCardDuration: { fontSize: 13, color: COLORS.textMuted, marginTop: 2 },
+  planCardTypeWrap: { flexDirection: 'row', alignItems: 'flex-start', gap: 5, marginTop: 9 },
+  planCardTypeTxt: { flex: 1, fontSize: 11.5, fontWeight: '700', color: COLORS.violet, lineHeight: 15 },
+  planCardCaption: { fontSize: 11, color: COLORS.textMuted, marginTop: 3, lineHeight: 14 },
+  planCardPrice: { fontSize: 19, fontWeight: '800', color: COLORS.violet, marginTop: 10 },
 
   recap: { backgroundColor: '#fff', borderRadius: 14, padding: 14, marginTop: 6 },
   recapTitle: { fontSize: 13, fontWeight: '700', color: COLORS.text, marginBottom: 8 },
@@ -443,16 +515,16 @@ const s = StyleSheet.create({
   featTxt: { fontSize: 11, color: '#555' },
 
   infoPage: { flex: 1, padding: 16 },
-  infoCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 },
-  infoSection: { fontSize: 11, fontWeight: '700', color: '#999', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
+  infoCard: { backgroundColor: '#fff', borderRadius: RADIUS.lg, padding: 14, ...SHADOW.card },
+  infoSection: { fontSize: 11, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
   infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: '#f8f8f8' },
   infoTxt: { fontSize: 13, color: '#333', flex: 1, lineHeight: 18 },
   stepNum: { width: 20, height: 20, borderRadius: 10, backgroundColor: COLORS.violet, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   stepNumTxt: { color: '#fff', fontSize: 10, fontWeight: '800' },
 
-  ctaBar: { backgroundColor: '#fff', padding: 12, borderTopWidth: 1, borderTopColor: '#F0F0F0' },
+  ctaBar: { backgroundColor: '#fff', padding: 14, borderTopWidth: 1, borderTopColor: '#F0F0F0', ...SHADOW.raised },
   selectionSummary: { marginBottom: 8, paddingHorizontal: 2 },
-  selectionSummaryTitle: { fontSize: 10, fontWeight: '700', color: '#999', textTransform: 'uppercase', letterSpacing: 0.4 },
+  selectionSummaryTitle: { fontSize: 10, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4 },
   selectionSummaryTxt: { fontSize: 13, fontWeight: '700', color: COLORS.text, marginTop: 2 },
   ctaWrap: { borderRadius: 14, overflow: 'hidden' },
   ctaBtn: { padding: 15, alignItems: 'center' },

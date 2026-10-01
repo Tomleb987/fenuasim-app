@@ -12,6 +12,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router'
 import { COLORS } from '../constants/theme'
 import { fetchTopupOrderBySession } from '../hooks/useEsimTopups'
 import { EsimTopupStatus } from '../types'
+import { closeCheckoutBrowser } from '../lib/checkout'
 
 const POLL_INTERVAL_MS = 3000
 const POLL_TIMEOUT_MS = 45000
@@ -23,6 +24,10 @@ export default function TopupSuccess() {
   const [lastError, setLastError] = useState<string | null>(null)
   const [timedOut, setTimedOut] = useState(false)
   const stopRef = useRef(false)
+
+  // Retour de Stripe : sur iOS le SFSafariViewController reste presente
+  // derriere l'app, on le referme. Sans effet sur Android (voir lib/checkout).
+  useEffect(() => { closeCheckoutBrowser() }, [])
 
   useEffect(() => {
     if (!session_id) return
@@ -96,8 +101,10 @@ export default function TopupSuccess() {
           </>
         )}
 
-        <TouchableOpacity style={s.cta} onPress={() => router.replace('/(tabs)')}>
-          <Text style={s.ctaTxt}>Retour à l'accueil</Text>
+        <TouchableOpacity style={s.ctaWrap} onPress={() => router.replace('/(tabs)')}>
+          <View style={s.cta}>
+            <Text style={s.ctaTxt}>Retour à l'accueil</Text>
+          </View>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -111,6 +118,7 @@ const s = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '800', color: COLORS.text, textAlign: 'center' },
   sub: { fontSize: 14, color: '#888', marginTop: 8, textAlign: 'center', lineHeight: 20 },
   errDetail: { fontSize: 11, color: '#bbb', marginTop: 10, textAlign: 'center' },
-  cta: { marginTop: 28, borderRadius: 14, paddingVertical: 16, paddingHorizontal: 32, backgroundColor: COLORS.violet },
-  ctaTxt: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  ctaWrap: { marginTop: 28, borderRadius: 14, overflow: 'hidden', backgroundColor: '#fff', borderWidth: 1.5, borderColor: COLORS.violet },
+  cta: { paddingVertical: 16, paddingHorizontal: 32 },
+  ctaTxt: { color: COLORS.violet, fontSize: 16, fontWeight: '800' },
 })

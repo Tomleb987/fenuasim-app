@@ -5,6 +5,7 @@
   },
   "build": {
     "development": {
+      "environment": "development",
       "developmentClient": true,
       "distribution": "internal",
       "ios": {
@@ -12,19 +13,36 @@
       }
     },
     "preview": {
+      "environment": "preview",
       "distribution": "internal",
       "ios": {
         "resourceClass": "m-medium"
       }
     },
     "production": {
+      "environment": "production",
       "autoIncrement": true,
       "ios": {
         "resourceClass": "m-medium"
+      },
+      "android": {
+        "buildType": "app-bundle"
       }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascApiKeyPath": "./secrets/AuthKey_74Y8BDJV4C.p8",
+        "ascApiKeyId": "74Y8BDJV4C",
+        "ascApiKeyIssuerId": "668e332c-e75a-42ad-a6b2-ae96ede0678c",
+        "ascAppId": "6808063348"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./secrets/google-play-service-account.json",
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    }
   }
 }

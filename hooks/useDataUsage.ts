@@ -7,6 +7,22 @@ interface DataUsage {
   status: string
   is_unlimited: boolean
   expired_at: string | null
+  // Airalo renvoie ces quatre compteurs pour les forfaits incluant appels et/ou
+  // SMS (47 forfaits actifs au catalogue), et les omet pour les forfaits
+  // Internet seul. Verifie en direct le 2026-09-09 sur une eSIM
+  // "20 Go - 200 SMS - 200 Mins" : remaining_voice 198, total_voice 200,
+  // remaining_text 200, total_text 200. Ils etaient jusqu'ici recus puis
+  // ignores -- le client payait 200 minutes sans jamais savoir combien il lui
+  // en restait.
+  remaining_voice?: number | null
+  total_voice?: number | null
+  remaining_text?: number | null
+  total_text?: number | null
+}
+
+export type VoiceSmsUsage = {
+  voice: { remaining: number; total: number } | null
+  sms: { remaining: number; total: number } | null
 }
 
 function formatMo(mo: number): string {
@@ -68,6 +84,22 @@ export function useDataUsage() {
     return usageMap[iccid]?.expired_at ?? null
   }
 
+  // Renvoie null pour un forfait Internet seul : rien ne doit alors s'afficher.
+  // Un total a 0 est traite comme absent, pour la meme raison que
+  // hasReliableUsage ci-dessous -- "0 minute au total" n'a pas de sens et
+  // signale une capacite non encore remontee par l'API.
+  function getVoiceSmsUsage(iccid: string): VoiceSmsUsage | null {
+    const u = usageMap[iccid]
+    if (!u) return null
+    const hasVoice = typeof u.total_voice === 'number' && u.total_voice > 0
+    const hasSms = typeof u.total_text === 'number' && u.total_text > 0
+    if (!hasVoice && !hasSms) return null
+    return {
+      voice: hasVoice ? { remaining: u.remaining_voice ?? 0, total: u.total_voice as number } : null,
+      sms: hasSms ? { remaining: u.remaining_text ?? 0, total: u.total_text as number } : null,
+    }
+  }
+
   // Un total a 0 Mo pour un forfait limite ne veut jamais dire "0 Mo achetes" :
   // ca signifie que l'API n'a pas encore remonte la vraie capacite (ex: eSIM pas
   // encore activee). Permet au rendu de distinguer "vraiment epuise" de "pas encore connu".
@@ -78,5 +110,5 @@ export function useDataUsage() {
     return u.total > 0
   }
 
-  return { fetchUsage, isLoading, getPct, getUsedStr, getRemainingStr, getExpiry, hasReliableUsage }
+  return { fetchUsage, isLoading, getPct, getUsedStr, getRemainingStr, getExpiry, hasReliableUsage, getVoiceSmsUsage }
 }

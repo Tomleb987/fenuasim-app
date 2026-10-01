@@ -12,6 +12,7 @@ export type PackageInfo = {
   validity: string | null
   validity_days: number | null
   is_unlimited: boolean | null
+  available_topup: boolean | null
 }
 
 type CatalogRow = { id: string; region_fr: string | null; region: string | null }
@@ -98,11 +99,38 @@ export function getPlanType(p: { includes_voice?: boolean | null; includes_sms?:
   return 'internet'
 }
 
-export function getPlanTypeLabel(t: PlanCoverageType): string {
+// Le volume d'appels/SMS n'a pas sa propre colonne dans airalo_packages
+// (seulement includes_voice/includes_sms, des booleens) -- mais il est deja
+// present, de facon fiable, dans le champ `name` du forfait, verifie reel sur
+// les 47 forfaits concernes : format constant "{data} Go - {sms} SMS -
+// {mins} Mins - {jours} jours". Jamais invente : si le format ne correspond
+// pas, on affiche juste "Inclus" comme avant plutot qu'un chiffre incorrect.
+export interface VoiceSmsVolume {
+  minutes: number | null
+  sms: number | null
+}
+
+export function parseVoiceSmsVolume(name: string | null | undefined): VoiceSmsVolume {
+  if (!name) return { minutes: null, sms: null }
+  const smsMatch = name.match(/(\d+)\s*SMS/i)
+  const minMatch = name.match(/(\d+)\s*Mins?\b/i)
+  return {
+    sms: smsMatch ? parseInt(smsMatch[1], 10) : null,
+    minutes: minMatch ? parseInt(minMatch[1], 10) : null,
+  }
+}
+
+export function getPlanTypeLabel(t: PlanCoverageType, volume?: VoiceSmsVolume): string {
+  const mins = volume?.minutes
+  const sms = volume?.sms
   switch (t) {
-    case 'internet_calls_sms': return 'Internet + appels + SMS'
-    case 'internet_calls': return 'Internet + appels'
-    case 'internet_sms': return 'Internet + SMS'
+    case 'internet_calls_sms':
+      if (mins != null && sms != null) return `Internet + ${mins} min + ${sms} SMS`
+      return 'Internet + appels + SMS'
+    case 'internet_calls':
+      return mins != null ? `Internet + ${mins} min d'appels` : 'Internet + appels'
+    case 'internet_sms':
+      return sms != null ? `Internet + ${sms} SMS` : 'Internet + SMS'
     default: return 'Internet uniquement'
   }
 }
@@ -145,7 +173,7 @@ export function usePackageInfo() {
 
     const { data } = await supabase
       .from('airalo_packages')
-      .select('id, region_fr, region, name, data_amount, data_unit, validity, validity_days, is_unlimited')
+      .select('id, region_fr, region, name, data_amount, data_unit, validity, validity_days, is_unlimited, available_topup')
       .in('id', ids)
 
     const map: Record<string, PackageInfo> = {}
@@ -206,5 +234,16 @@ export function usePackageInfo() {
     }
   }
 
-  return { fetchPackages, getPackageDisplay, loading }
+  // Le forfait accepte-t-il une recharge ? Renvoie `null` tant qu'on ne le sait
+  // pas : forfait encore en cours de chargement, ou package_id disparu de
+  // airalo_packages (les parcours de secours de getPackageDisplay retrouvent une
+  // destination, jamais cette information). Un appelant ne doit masquer une
+  // action de recharge que sur un `false` explicite -- un forfait inconnu reste
+  // proposable, quitte a ce que l'ecran de recharge conclue lui-meme.
+  function getPackageTopup(packageId: string | null | undefined): boolean | null {
+    const pkg = packageId ? packages[packageId] : undefined
+    return pkg ? pkg.available_topup : null
+  }
+
+  return { fetchPackages, getPackageDisplay, getPackageTopup, loading }
 }

@@ -2,21 +2,23 @@
   "expo": {
     "name": "FenuaSIM",
     "slug": "fenuasim-app",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "scheme": "fenuasim",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.fenuasim.app",
-      "buildNumber": "1"
+      "buildNumber": "13",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleDevelopmentRegion": "fr",
+        "CFBundleLocalizations": [
+          "fr"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -24,7 +26,18 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.fenuasim.app",
-      "versionCode": 1
+      "versionCode": 10,
+      "permissions": [
+        "android.permission.INTERNET"
+      ],
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.VIBRATE",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -32,8 +45,31 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#D251D8",
+          "image": "./assets/splash-blank.png",
+          "imageWidth": 120,
+          "resizeMode": "contain"
+        }
+      ],
+      "expo-web-browser",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "extraProguardRules": "# React Native et Hermes s'appuient massivement sur la reflexion : R8\n# supprimerait des classes qu'aucun appel direct ne reference, et\n# l'application planterait au lancement sans erreur de compilation.\n-keep class com.facebook.react.** { *; }\n-keep class com.facebook.hermes.** { *; }\n-keep class com.facebook.jni.** { *; }\n-keep class expo.modules.** { *; }\n-keepclassmembers class * { @com.facebook.proguard.annotations.DoNotStrip *; }\n-keepclassmembers class * { @com.facebook.common.internal.DoNotStrip *; }\n-dontwarn com.facebook.react.**\n-dontwarn expo.modules.**\n"
+          }
+        }
+      ]
     ],
+    "locales": {
+      "fr": "./locales/fr.json"
+    },
     "extra": {
       "router": {},
       "eas": {
