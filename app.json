@@ -76,6 +76,14 @@
         "projectId": "e3e92760-d9f5-45c6-afcd-ec19d3a6daf5"
       }
     },
-    "owner": "tomleb987"
+    "owner": "tomleb987",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/e3e92760-d9f5-45c6-afcd-ec19d3a6daf5",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    }
   }
 }
