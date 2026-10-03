@@ -2,7 +2,7 @@
   "expo": {
     "name": "FenuaSIM",
     "slug": "fenuasim-app",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.fenuasim.app",
-      "buildNumber": "13",
+      "buildNumber": "15",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "CFBundleDevelopmentRegion": "fr",
@@ -26,7 +26,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.fenuasim.app",
-      "versionCode": 10,
+      "versionCode": 12,
       "permissions": [
         "android.permission.INTERNET"
       ],

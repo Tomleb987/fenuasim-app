@@ -21,6 +21,16 @@
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? ''
 const BUCKET = 'product-images'
 
+// Quelques fichiers du bucket ne portent pas exactement le slug de la
+// destination : le bucket est alimente par le site, qui a ses propres noms.
+// Verifie le 2026-10-02 : esim-polynesie.jpg existe, esim-polynesie-francaise
+// repond 400 -- la carte Polynesie de l'accueil restait donc sans photo.
+// Renommer le fichier cote Storage romprait le lien utilise par le site : on
+// fait porter l'ecart par l'application, qui est seule a connaitre ses slugs.
+const FILE_ALIASES: Record<string, string> = {
+  'polynesie-francaise': 'polynesie',
+}
+
 /**
  * URL d'une photo de destination, redimensionnee cote serveur.
  * `width` est la largeur de rendu souhaitee en pixels (pas en points) :
@@ -32,11 +42,12 @@ export function destinationImageUrl(
   height?: number,
 ): string | null {
   if (!slug || !SUPABASE_URL) return null
+  const file = FILE_ALIASES[slug] ?? slug
   const base = SUPABASE_URL.replace(/\/+$/, '')
   // Quand une hauteur est fournie, le recadrage est fait par le serveur au
   // ratio exact de la carte (resize=cover, recadrage centre). On telecharge
   // alors uniquement ce qui est affiche, et le rendu est previsible -- plutot
   // que de laisser le composant rogner une image dont le format varie.
   const size = height ? `width=${width}&height=${height}&resize=cover` : `width=${width}`
-  return `${base}/storage/v1/render/image/public/${BUCKET}/esim-${slug}.jpg?${size}&quality=70`
+  return `${base}/storage/v1/render/image/public/${BUCKET}/esim-${file}.jpg?${size}&quality=70`
 }
