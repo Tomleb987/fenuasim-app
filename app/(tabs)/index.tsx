@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { supabase } from '../../lib/supabase'
+import { prefetchDestinations } from '../../lib/catalog'
 import { COLORS, RADIUS, SHADOW, TYPO } from '../../constants/theme'
 import { destinationImageUrl } from '../../lib/destinationImage'
 import { useDataUsage } from '../../hooks/useDataUsage'
@@ -116,7 +117,9 @@ export default function HomeScreen() {
   const { byIccid: getAssignment } = useEsimAssignments()
   const { fetchPackages, getPackageDisplay, getPackageTopup } = usePackageInfo()
 
-  useEffect(() => { loadRegions() }, [])
+  // Precharge le catalogue de l'onglet Explorer pendant que l'utilisateur est
+  // sur l'accueil : a l'ouverture de l'onglet, la liste s'affiche sans attente.
+  useEffect(() => { loadRegions(); prefetchDestinations() }, [])
 
   // L'accueil est un onglet : il reste monte en permanence. Un useEffect avec
   // [] ne se rejouait donc jamais, et le retour depuis la recharge

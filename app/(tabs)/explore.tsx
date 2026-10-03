@@ -1,125 +1,67 @@
-import { useEffect, useState } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, ActivityIndicator } from 'react-native'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { View, Text, SectionList, TouchableOpacity, StyleSheet, TextInput, ActivityIndicator, RefreshControl } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import { supabase } from '../../lib/supabase'
 import { COLORS, RADIUS, SHADOW } from '../../constants/theme'
-import { getFR } from '../../lib/regionNames'
 import { useCurrency } from '../../lib/currency'
-import { fetchOraCatalog, POLYNESIA_NAME, POLYNESIA_SLUG } from '../../lib/oraFly'
+import { getCachedDestinations, loadDestinations, normalize, type Destination } from '../../lib/catalog'
 
 const TOP = ["France","Canada","Etats-Unis","Australie","Nouvelle-Zelande"]
-
-function normalize(str: string): string {
-  return str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,'').trim()
-}
-
-function getDays(validity: string | null): number {
-  if (!validity) return 0
-  const n = parseInt(validity.toString().split(' ')[0])
-  return isNaN(n) ? 0 : n
-}
+const GRADIENT = ['#D251D8','#FD7F3C'] as const
+const GRAD_START = {x:0,y:0}
+const GRAD_END = {x:1,y:0}
 
 export default function ExploreScreen() {
   const router = useRouter()
-  const [destinations, setDestinations] = useState<any[]>([])
-  const [filtered, setFiltered] = useState<any[]>([])
+  const { formatXpf } = useCurrency()
+  // Affichage immediat de la derniere liste connue, rafraichie en arriere-plan.
+  const [destinations, setDestinations] = useState<Destination[]>(() => getCachedDestinations() ?? [])
   const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => !getCachedDestinations())
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState(false)
   const [typeFilter, setTypeFilter] = useState<'all'|'local'|'global'>('all')
 
-  useEffect(() => { fetchAll() }, [])
+  const fetchAll = useCallback(async (force = false) => {
+    setError(false)
+    try {
+      const list = await loadDestinations(force)
+      setDestinations(list)
+    } catch {
+      // On garde la liste deja affichee ; l'erreur n'est montree que s'il n'y a rien.
+      setError(true)
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }, [])
 
-  useEffect(() => {
+  useEffect(() => { fetchAll() }, [fetchAll])
+
+  const onRefresh = useCallback(() => { setRefreshing(true); fetchAll(true) }, [fetchAll])
+
+  const filtered = useMemo(() => {
     let list = destinations
     if (typeFilter !== 'all') list = list.filter(d => d.type === typeFilter)
-    if (search.trim()) {
-      const q = normalize(search)
-      list = list.filter(d => normalize(d.nameFR).includes(q) || (d.aliases ?? []).some((a: string) => a.includes(q)))
-    }
-    setFiltered(list)
-  }, [search, destinations, typeFilter])
+    const q = normalize(search)
+    if (q) list = list.filter(d => d.searchKey.includes(q))
+    return list
+  }, [destinations, typeFilter, search])
 
-  async function fetchAll() {
-    setLoading(true)
-    // Le projet Supabase plafonne chaque requete a 1000 lignes (verifie : 2058
-    // forfaits actifs reels au total, content-range renvoie toujours 0-999
-    // meme en demandant plus). Sans pagination, les forfaits les plus chers
-    // (au-dela des 1000 moins chers, tri croissant) etaient silencieusement
-    // absents ici -- d'ou un comptage par destination inferieur a celui de la
-    // fiche destination (qui filtre par slug et n'atteint jamais cette limite).
-    const PAGE_SIZE = 1000
-    let data: any[] = []
-    let from = 0
-    while (true) {
-      const { data: page, error } = await supabase
-        .from('airalo_packages')
-        .select('id, name, region_fr, region, slug, data_amount, data_unit, validity, validity_days, final_price_xpf, is_unlimited, type, flag_url, status')
-        .eq('status', 'active')
-        .order('final_price_xpf', { ascending: true })
-        .range(from, from + PAGE_SIZE - 1)
-      if (error || !page) break
-      data = data.concat(page)
-      if (page.length < PAGE_SIZE) break
-      from += PAGE_SIZE
-    }
+  const sections = useMemo(() => {
+    const top = filtered.filter(d => TOP.includes(d.nameFR))
+    const other = filtered.filter(d => !TOP.includes(d.nameFR))
+    const out: { key: string; title: string; top: boolean; data: Destination[] }[] = []
+    if (top.length > 0) out.push({ key: 'top', title: 'Destinations populaires', top: true, data: top })
+    if (other.length > 0) out.push({ key: 'all', title: 'Toutes les destinations', top: false, data: other })
+    return out
+  }, [filtered])
 
-    // Polynésie française : forfaits ORA FLY, hors catalogue Airalo, servis par
-    // le site. Une erreur réseau ne doit pas priver l'utilisateur du reste.
-    const ora = await fetchOraCatalog().catch(() => null)
-
-    if (data.length > 0) {
-      const valid = data.filter(p => p.final_price_xpf && p.final_price_xpf > 0)
-      // Regroupe par slug (l'identifiant reellement utilise pour naviguer et
-      // filtrer la fiche destination : app/esim/[country].tsx fait .eq('slug', s))
-      // et non par nom de region traduit -- un regroupement par texte peut se
-      // fragmenter si region_fr/region varie (casse, accents) pour un meme
-      // slug, ce qui desynchronise le compteur affiche ici du vrai nombre de
-      // forfaits trouve sur la fiche destination.
-      const map: Record<string, any> = {}
-      valid.forEach(p => {
-        const key = p.slug
-        if (!map[key]) {
-          map[key] = {
-            nameFR: getFR(p.region_fr, p.region),
-            slug: p.slug,
-            type: p.type,
-            flag_url: p.flag_url,
-            minPrice: p.final_price_xpf,
-            maxDays: getDays(p.validity),
-            count: 1,
-          }
-        } else {
-          if (p.final_price_xpf < map[key].minPrice) map[key].minPrice = p.final_price_xpf
-          const d = getDays(p.validity)
-          if (d > map[key].maxDays) map[key].maxDays = d
-          map[key].count++
-        }
-      })
-      if (ora && ora.packages.length > 0) {
-        map[POLYNESIA_NAME] = {
-          nameFR: POLYNESIA_NAME,
-          slug: POLYNESIA_SLUG,
-          type: 'local',
-          flag_url: null,
-          minPrice: Math.min(...ora.packages.map(p => p.final_price_xpf)),
-          maxDays: Math.max(...ora.packages.map(p => p.validity_days)),
-          count: ora.packages.length,
-          comingSoon: !ora.salesOpen,
-          aliases: ['polynesie', 'tahiti', 'moorea', 'bora bora', 'fenua', 'papeete', 'french polynesia'],
-        }
-      }
-      const list = Object.values(map).sort((a,b) => a.nameFR.localeCompare(b.nameFR, 'fr'))
-      setDestinations(list)
-      setFiltered(list)
-    }
-    setLoading(false)
-  }
-
-  const topList = filtered.filter(d => TOP.includes(d.nameFR))
-  const otherList = filtered.filter(d => !TOP.includes(d.nameFR))
+  const onOpen = useCallback((slug: string) => {
+    router.push({ pathname: '/esim/[country]', params: { country: slug } })
+  }, [router])
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -136,6 +78,7 @@ export default function ExploreScreen() {
             placeholderTextColor="#aaa"
             value={search}
             onChangeText={setSearch}
+            autoCorrect={false}
           />
           {search.length > 0 && (
             <TouchableOpacity onPress={() => setSearch('')}>
@@ -163,21 +106,35 @@ export default function ExploreScreen() {
           <ActivityIndicator color={COLORS.violet} size="large" />
           <Text style={s.loaderTxt}>Chargement...</Text>
         </View>
+      ) : error && destinations.length === 0 ? (
+        <View style={s.empty}>
+          <Text style={s.emptyTxt}>Impossible de charger les destinations</Text>
+          <TouchableOpacity onPress={() => { setLoading(true); fetchAll(true) }}>
+            <Text style={s.emptyLink}>Réessayer</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
-        <ScrollView showsVerticalScrollIndicator={false} style={s.scroll}>
-          {topList.length > 0 && (
-            <>
-              <Text style={s.secTitle}>Destinations populaires</Text>
-              {topList.map(d => <DestCard key={d.nameFR} d={d} router={router} top />)}
-            </>
+        <SectionList
+          style={s.scroll}
+          contentContainerStyle={s.listContent}
+          sections={sections}
+          keyExtractor={d => d.slug}
+          renderSectionHeader={({ section }) => (
+            <Text style={[s.secTitle, !section.top && s.secTitleSpaced]}>{section.title}</Text>
           )}
-          {otherList.length > 0 && (
-            <>
-              <Text style={[s.secTitle,{marginTop:16}]}>Toutes les destinations</Text>
-              {otherList.map(d => <DestCard key={d.nameFR} d={d} router={router} />)}
-            </>
+          renderItem={({ item, section }) => (
+            <DestCard d={item} top={section.top} price={formatXpf(item.minPrice)} onOpen={onOpen} />
           )}
-          {filtered.length === 0 && (
+          stickySectionHeadersEnabled={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+          initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          windowSize={7}
+          removeClippedSubviews
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.violet} />}
+          ListEmptyComponent={
             <View style={s.empty}>
               <Text style={s.emptyIcon}>🔍</Text>
               <Text style={s.emptyTxt}>Aucune destination trouvée</Text>
@@ -185,32 +142,27 @@ export default function ExploreScreen() {
                 <Text style={s.emptyLink}>Effacer la recherche</Text>
               </TouchableOpacity>
             </View>
-          )}
-          <View style={{height:20}} />
-        </ScrollView>
+          }
+        />
       )}
     </SafeAreaView>
   )
 }
 
-function DestCard({ d, router, top = false }: { d: any, router: any, top?: boolean }) {
-  const { formatXpf } = useCurrency()
+const DestCard = memo(function DestCard({ d, top, price, onOpen }: { d: Destination, top: boolean, price: string, onOpen: (slug: string) => void }) {
   return (
-    <TouchableOpacity
-      style={[s.card, top && s.cardTop]}
-      onPress={() => router.push({ pathname: '/esim/[country]', params: { country: d.slug } })}
-    >
+    <TouchableOpacity style={[s.card, top && s.cardTop]} onPress={() => onOpen(d.slug)}>
       <View style={s.cardHead}>
         <View style={{flex:1}}>
-          <View style={{flexDirection:'row',alignItems:'center',gap:6}}>
+          <View style={s.nameRow}>
             <Text style={s.cardName}>{d.nameFR}</Text>
             {top && (
-              <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.topBadge}>
+              <LinearGradient colors={GRADIENT} start={GRAD_START} end={GRAD_END} style={s.topBadge}>
                 <Text style={s.topBadgeTxt}>TOP</Text>
               </LinearGradient>
             )}
             {d.comingSoon && (
-              <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.topBadge}>
+              <LinearGradient colors={GRADIENT} start={GRAD_START} end={GRAD_END} style={s.topBadge}>
                 <Text style={s.topBadgeTxt}>PROCHAINEMENT</Text>
               </LinearGradient>
             )}
@@ -219,17 +171,17 @@ function DestCard({ d, router, top = false }: { d: any, router: any, top?: boole
         </View>
         <View style={{alignItems:'flex-end'}}>
           <Text style={s.priceLabel}>A partir de</Text>
-          <Text style={s.priceVal}>{formatXpf(d.minPrice)}</Text>
+          <Text style={s.priceVal}>{price}</Text>
         </View>
       </View>
       <View style={s.cardFooter}>
-        <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.buyBtn}>
+        <LinearGradient colors={GRADIENT} start={GRAD_START} end={GRAD_END} style={s.buyBtn}>
           <Text style={s.buyBtnTxt}>Voir les forfaits</Text>
         </LinearGradient>
       </View>
     </TouchableOpacity>
   )
-}
+})
 
 const s = StyleSheet.create({
   safe:{flex:1,backgroundColor:COLORS.bg},
@@ -246,8 +198,11 @@ const s = StyleSheet.create({
   filterTxtActive:{color:COLORS.violet},
   loader:{flex:1,justifyContent:'center',alignItems:'center',gap:12},
   loaderTxt:{fontSize:14,color:COLORS.textMuted},
-  scroll:{flex:1,padding:16},
+  scroll:{flex:1},
+  listContent:{padding:16,paddingBottom:36},
   secTitle:{fontSize:15,fontWeight:'700',color:COLORS.text,marginBottom:10},
+  secTitleSpaced:{marginTop:16},
+  nameRow:{flexDirection:'row',alignItems:'center',gap:6},
   card:{backgroundColor:'#fff',borderRadius:16,padding:16,marginBottom:10,...SHADOW.card,borderWidth:1,borderColor:COLORS.border},
   cardTop:{borderColor:'rgba(210,81,216,0.25)'},
   cardHead:{flexDirection:'row',justifyContent:'space-between',alignItems:'flex-start',marginBottom:12},
