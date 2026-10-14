@@ -33,12 +33,21 @@ export function useEsimTopups() {
 
   // Le prix et la compatibilite sont revérifiés côté serveur avant creation du
   // Checkout Stripe -- packageId n'est qu'une intention, jamais une source de verite.
-  async function createCheckout(iccid: string, packageId: string) {
+  // promoCode (2026-10-14) : optionnel, revalide et applique cote serveur
+  // (besoin : recharge des eSIM offertes par AVA avec le code AVA5).
+  async function createCheckout(iccid: string, packageId: string, promoCode?: string) {
     const { data, error: fnError } = await supabase.functions.invoke('create-topup-checkout', {
-      body: { iccid, packageId },
+      body: { iccid, packageId, ...(promoCode ? { promoCode } : {}) },
     })
     if (fnError || !data?.url) {
-      throw new Error(data?.error ?? fnError?.message ?? 'Impossible de creer le paiement')
+      // Sur une reponse non-2xx, supabase-js ne remplit pas `data` : le message
+      // du serveur (ex. « Ce code promo n'est plus valide ») est dans le corps
+      // de la reponse, accessible via fnError.context.
+      let serverMsg: string | undefined = data?.error
+      if (!serverMsg && (fnError as any)?.context?.json) {
+        try { serverMsg = (await (fnError as any).context.json())?.error } catch { /* corps illisible */ }
+      }
+      throw new Error(serverMsg ?? fnError?.message ?? 'Impossible de creer le paiement')
     }
     return data as { url: string; topupOrderId: string }
   }

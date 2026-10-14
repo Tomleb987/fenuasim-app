@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, TextInput } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -9,6 +9,7 @@ import { useCurrency } from '../../lib/currency'
 import { useEsimTopups } from '../../hooks/useEsimTopups'
 import { EsimTopupOption } from '../../types'
 import { openCheckout } from '../../lib/checkout'
+import { validateEsimPromoCode } from '../../hooks/usePromoCode'
 
 export default function EsimTopupScreen() {
   const router = useRouter()
@@ -21,6 +22,37 @@ export default function EsimTopupScreen() {
   const { loading, options, compatible, error, fetchTopups, createCheckout } = useEsimTopups()
   const [selected, setSelected] = useState<EsimTopupOption | null>(null)
   const [creating, setCreating] = useState(false)
+  // Code promo (2026-10-14) : meme validation que l'achat initial
+  // (hooks/usePromoCode), puis revalidation et application cote serveur par
+  // create-topup-checkout. Besoin : recharge avec le code AVA5.
+  const [promoCode, setPromoCode] = useState('')
+  const [promoStatus, setPromoStatus] = useState<'idle' | 'loading' | 'valid' | 'invalid'>('idle')
+  const [promoError, setPromoError] = useState('')
+  const [discount, setDiscount] = useState<{ percentage?: number | null; amountEur?: number | null } | null>(null)
+
+  // Prix affiche apres remise, en EUR (meme formule que le serveur : % puis
+  // arrondi au centime, ou montant fixe en EUR, jamais negatif).
+  function discountedEur(priceEur: number) {
+    if (!discount) return priceEur
+    if (discount.percentage) return Math.round(priceEur * 100 * (1 - discount.percentage / 100)) / 100
+    if (discount.amountEur) return Math.max(0, priceEur - discount.amountEur)
+    return priceEur
+  }
+
+  async function handleApplyPromo() {
+    const code = promoCode.trim()
+    if (!code) return
+    setPromoStatus('loading')
+    const result = await validateEsimPromoCode(code, selected ? Math.round(selected.price_eur * EUR_TO_XPF) : 0)
+    if (result.isValid) {
+      setDiscount({ percentage: result.discountPercentage, amountEur: result.discountAmountEur })
+      setPromoStatus('valid')
+    } else {
+      setDiscount(null)
+      setPromoError(result.error ?? 'Code promo invalide')
+      setPromoStatus('invalid')
+    }
+  }
 
   useEffect(() => {
     if (iccid) fetchTopups(iccid)
@@ -30,11 +62,13 @@ export default function EsimTopupScreen() {
     if (!selected || !iccid || creating) return
     setCreating(true)
     try {
-      const { url } = await createCheckout(iccid, selected.package_id)
+      const { url } = await createCheckout(iccid, selected.package_id, promoStatus === 'valid' ? promoCode.trim() : undefined)
       await openCheckout(url)
     } catch (e: any) {
       console.error('handleRecharge:', e)
-      Alert.alert('Erreur', 'Impossible de créer le paiement, veuillez réessayer.')
+      // Un code promo refuse par le serveur remonte son propre message.
+      const msg = typeof e?.message === 'string' && /promo/i.test(e.message) ? e.message : 'Impossible de créer le paiement, veuillez réessayer.'
+      Alert.alert('Erreur', msg)
     } finally {
       setCreating(false)
     }
@@ -93,7 +127,7 @@ export default function EsimTopupScreen() {
                     <Text style={s.optionTitle}>{opt.is_unlimited ? 'Données illimitées' : (opt.data_label ?? opt.title ?? '-')}</Text>
                     {!!opt.validity_days && <Text style={s.optionSub}>{opt.validity_days} jours</Text>}
                   </View>
-                  <Text style={s.optionPrice}>{formatXpf(opt.price_eur * EUR_TO_XPF)}</Text>
+                  <Text style={s.optionPrice}>{formatXpf(discountedEur(opt.price_eur) * EUR_TO_XPF)}</Text>
                   <Ionicons
                     name={isSelected ? 'radio-button-on' : 'radio-button-off'}
                     size={20}
@@ -103,6 +137,24 @@ export default function EsimTopupScreen() {
                 </TouchableOpacity>
               )
             })}
+
+            <Text style={[s.sectionLabel, { marginTop: 10 }]}>Code promo</Text>
+            <View style={s.promoRow}>
+              <TextInput
+                style={s.promoInput}
+                placeholder="Code promo (optionnel)"
+                autoCapitalize="characters"
+                autoCorrect={false}
+                value={promoCode}
+                onChangeText={(v) => { setPromoCode(v); if (promoStatus !== 'idle') { setPromoStatus('idle'); setDiscount(null) } }}
+              />
+              <TouchableOpacity style={s.promoBtn} onPress={handleApplyPromo} disabled={!promoCode.trim() || promoStatus === 'loading'}>
+                {promoStatus === 'loading' ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.promoBtnTxt}>Appliquer</Text>}
+              </TouchableOpacity>
+            </View>
+            {promoStatus === 'valid' && <Text style={s.promoValid}>Code appliqué{discount?.percentage ? ` : −${discount.percentage} %` : ''}</Text>}
+            {promoStatus === 'invalid' && <Text style={s.promoErr}>{promoError}</Text>}
+            <View style={{ height: 24 }} />
           </ScrollView>
 
           <View style={[s.ctaBar, { paddingBottom: 16 + insets.bottom }]}>
@@ -115,7 +167,7 @@ export default function EsimTopupScreen() {
                 {creating ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={s.ctaTxt}>{selected ? `Recharger — ${formatXpf(selected.price_eur * EUR_TO_XPF)}` : 'Choisissez une recharge'}</Text>
+                  <Text style={s.ctaTxt}>{selected ? `Recharger — ${formatXpf(discountedEur(selected.price_eur) * EUR_TO_XPF)}` : 'Choisissez une recharge'}</Text>
                 )}
               </LinearGradient>
             </TouchableOpacity>
@@ -145,6 +197,12 @@ const s = StyleSheet.create({
   optionTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text },
   optionSub: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
   optionPrice: { fontSize: 15, fontWeight: '800', color: COLORS.violet },
+  promoRow: { flexDirection: 'row', gap: 8 },
+  promoInput: { flex: 1, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: COLORS.text },
+  promoBtn: { backgroundColor: COLORS.violet, borderRadius: 12, paddingHorizontal: 16, justifyContent: 'center', alignItems: 'center' },
+  promoBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  promoValid: { fontSize: 12, color: COLORS.success, marginTop: 6, fontWeight: '600' },
+  promoErr: { fontSize: 12, color: '#E5484D', marginTop: 6 },
   ctaBar: { backgroundColor: '#fff', padding: 16, borderTopWidth: 1, borderTopColor: COLORS.border },
   ctaWrap: { borderRadius: 14, overflow: 'hidden' },
   cta: { padding: 16, alignItems: 'center', justifyContent: 'center' },
