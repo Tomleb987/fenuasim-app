@@ -5,7 +5,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { COLORS, RADIUS, SHADOW, EUR_TO_XPF } from '../../constants/theme'
-import { useCurrency } from '../../lib/currency'
+import { useCurrency, formatAmount } from '../../lib/currency'
 import { useEsimTopups } from '../../hooks/useEsimTopups'
 import { EsimTopupOption } from '../../types'
 import { openCheckout } from '../../lib/checkout'
@@ -17,7 +17,13 @@ export default function EsimTopupScreen() {
   // superpose au bas de l'ecran. Sans cet inset, le bouton principal passe
   // partiellement sous la barre de gestes ou les 3 boutons.
   const insets = useSafeAreaInsets()
-  const { formatXpf } = useCurrency()
+  const { currency } = useCurrency()
+  // 2026-10-25 : les recharges sont tarifees et debitees en euros (price_eur).
+  // L'ancien affichage repassait par le XPF puis arrondissait a l'euro
+  // superieur en mode EUR (5,40 EUR affiches 6 EUR). On affiche l'euro exact,
+  // ou son equivalent XPF.
+  const showEur = (eur: number) =>
+    currency === 'EUR' ? formatAmount(eur, 'EUR') : formatAmount(Math.round(eur * EUR_TO_XPF), 'XPF')
   const { iccid, destination } = useLocalSearchParams<{ iccid: string; destination?: string }>()
   const { loading, options, compatible, error, fetchTopups, createCheckout } = useEsimTopups()
   const [selected, setSelected] = useState<EsimTopupOption | null>(null)
@@ -127,7 +133,7 @@ export default function EsimTopupScreen() {
                     <Text style={s.optionTitle}>{opt.is_unlimited ? 'Données illimitées' : (opt.data_label ?? opt.title ?? '-')}</Text>
                     {!!opt.validity_days && <Text style={s.optionSub}>{opt.validity_days} jours</Text>}
                   </View>
-                  <Text style={s.optionPrice}>{formatXpf(discountedEur(opt.price_eur) * EUR_TO_XPF)}</Text>
+                  <Text style={s.optionPrice}>{showEur(discountedEur(opt.price_eur))}</Text>
                   <Ionicons
                     name={isSelected ? 'radio-button-on' : 'radio-button-off'}
                     size={20}
@@ -167,7 +173,7 @@ export default function EsimTopupScreen() {
                 {creating ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={s.ctaTxt}>{selected ? `Recharger — ${formatXpf(discountedEur(selected.price_eur) * EUR_TO_XPF)}` : 'Choisissez une recharge'}</Text>
+                  <Text style={s.ctaTxt}>{selected ? `Recharger — ${showEur(discountedEur(selected.price_eur))}` : 'Choisissez une recharge'}</Text>
                 )}
               </LinearGradient>
             </TouchableOpacity>

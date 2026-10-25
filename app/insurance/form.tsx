@@ -4,7 +4,7 @@
 // "Bientot disponible" neutralise en Phase 4C -- voir PHASE4C_ASSURANCE_STRIPE.md
 // et la memoire fenuasim-ui-polish-and-ai-support pour le contexte complet.
 import React, { useEffect, useRef, useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Switch, Linking, Alert, KeyboardAvoidingView, Platform } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Switch, Alert, KeyboardAvoidingView, Platform } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -12,6 +12,7 @@ import { useRouter } from 'expo-router'
 import { COLORS, RADIUS, SHADOW, TYPO, EUR_TO_XPF } from '../../constants/theme'
 import { useCurrency } from '../../lib/currency'
 import { supabase } from '../../lib/supabase'
+import { openCheckout } from '../../lib/checkout'
 import {
   INSURANCE_PRODUCTS,
   INSURANCE_DESTINATIONS,
@@ -224,8 +225,17 @@ export default function InsuranceForm() {
   async function handlePay() {
     try {
       const total = premium != null ? premium + INSURANCE_SERVICE_FEE_EUR - promoDiscount : null
-      const url = await checkout(buildQuotePayload(), form.email, total)
-      await Linking.openURL(url)
+      const url = await checkout(
+        buildQuotePayload(),
+        form.email,
+        total,
+        promoStatus === 'valid' ? form.promoCode : null
+      )
+      // 2026-10-25 -- navigateur integre (comme l'achat eSIM) au lieu de
+      // Linking.openURL : le client ne quitte plus l'app, et le retour de
+      // Stripe (fenuasim://insurance-success) le ramene sur l'ecran de
+      // confirmation. Voir lib/checkout.ts pour le detail.
+      await openCheckout(url)
     } catch (e: any) {
       Alert.alert('Erreur', e.message || 'Erreur lors de la création du paiement')
     }

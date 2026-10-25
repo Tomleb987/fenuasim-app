@@ -34,6 +34,9 @@ type Pkg = {
   validity_days: number | null
   validity: string | null
   final_price_xpf: number
+  // Montant reellement debite par Stripe (toujours en EUR). Peut differer de
+  // final_price_xpf / 119.33 : les deux prix sont arrondis separement.
+  final_price_eur?: number | null
   is_unlimited: boolean | null
   available_topup: boolean | null
   operator_name: string | null
@@ -116,6 +119,7 @@ export default function CountryDetail() {
         validity_days: p.validity_days,
         validity: null,
         final_price_xpf: p.final_price_xpf,
+        final_price_eur: p.final_price_eur,
         is_unlimited: false,
         available_topup: true,
         operator_name: 'ORA',
@@ -142,7 +146,7 @@ export default function CountryDetail() {
     setError(false)
     const { data, error: err } = await supabase
       .from('airalo_packages')
-      .select('id, name, region_fr, data_amount, data_unit, validity_days, validity, final_price_xpf, is_unlimited, available_topup, operator_name, includes_voice, includes_sms, networks, type')
+      .select('id, name, region_fr, data_amount, data_unit, validity_days, validity, final_price_xpf, final_price_eur, is_unlimited, available_topup, operator_name, includes_voice, includes_sms, networks, type')
       .eq('status', 'active')
       .eq('slug', s)
       .gt('final_price_xpf', 0)
@@ -225,6 +229,9 @@ export default function CountryDetail() {
         packageId: sel.id,
         packageName: sel.name ?? destinationName,
         price: String(Math.round(sel.final_price_xpf)),
+        // 2026-10-25 : montant debite en euros, pour que l'ecran de paiement
+        // annonce exactement ce que Stripe facturera.
+        priceEur: sel.final_price_eur != null ? String(sel.final_price_eur) : '',
         days: getDurationLabel(sel),
         data: getDataLabel(sel),
         country: destinationName,
