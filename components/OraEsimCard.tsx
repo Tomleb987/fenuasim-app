@@ -24,6 +24,11 @@ export default function OraEsimCard({ esim }: { esim: MyOraEsim }) {
         <Text style={s.flag}>🇵🇫</Text>
       </View>
 
+      {/* 2026-10-27 : numéro de téléphone ORA, comme sur l'espace client du site.
+          Affiché en premier : c'est l'info que le client cherche pour donner son numéro. */}
+      {esim.phone_number ? (
+        <View style={s.row}><Text style={s.label}>Numéro de téléphone</Text><Text style={s.val} selectable>{esim.phone_number}</Text></View>
+      ) : null}
       <View style={s.row}><Text style={s.label}>ICCID</Text><Text style={s.val} selectable>{esim.iccid}</Text></View>
       <View style={s.row}><Text style={s.label}>Adresse SM-DP+</Text><Text style={s.val} selectable>{esim.smdp_address || '-'}</Text></View>
       <View style={[s.row, { borderBottomWidth: 0 }]}><Text style={s.label}>Code d'activation</Text><Text style={s.val} selectable>{esim.matching_code || '-'}</Text></View>

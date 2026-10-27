@@ -124,6 +124,9 @@ export type MyOraEsim = {
   iccid: string
   smdp_address: string
   matching_code: string
+  // 2026-10-27 : numéro ORA déjà formaté par /api/account/ora-esims
+  // (formatOraMsisdn côté site) ; null si le lot importé n'avait pas de MSISDN.
+  phone_number?: string | null
   assigned_at: string | null
   qr_code_url: string
 }
