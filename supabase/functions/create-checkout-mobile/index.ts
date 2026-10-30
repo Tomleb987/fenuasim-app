@@ -2,6 +2,10 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
+// Taux fixe du franc pacifique, identique a constants/theme.ts (app) et
+// src/lib/currency.ts (site).
+const EUR_TO_XPF = 119.33;
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -34,10 +38,18 @@ serve(async (req) => {
     // 2026-09-08 : promoCode etait envoye par l'application mais n'etait jamais
     // lu ici. Le client voyait donc une remise a l'ecran et payait le plein
     // tarif chez Stripe.
-    const { packageId, promoCode } = await req.json();
+    //
+    // 2026-10-29 : facturation en XPF. L'app envoie currency = 'XPF' quand le
+    // client a choisi l'affichage XPF. Avant, la carte etait toujours debitee
+    // en euros : un client polynesien voyait un prix en XPF, payait en EUR et
+    // supportait les frais de change de sa banque. Toute autre valeur, ou
+    // l'absence du champ (versions de l'app anterieures), garde le paiement
+    // en euros, a l'identique d'avant.
+    const { packageId, promoCode, currency } = await req.json();
     if (!packageId) {
       throw new Error("packageId est obligatoire");
     }
+    const payInXpf = currency === "XPF";
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, { apiVersion: "2023-10-16" });
 
@@ -58,6 +70,15 @@ serve(async (req) => {
     // Le prix vient de la base, jamais du client.
     let amountEur = Number(pkg.final_price_eur);
     if (!amountEur || isNaN(amountEur)) throw new Error(`Prix invalide: ${pkg.final_price_eur}`);
+
+    // Prix XPF catalogue, celui que l'app affiche dans la liste des forfaits.
+    // Le XPF n'a pas de centimes (devise "zero-decimal" chez Stripe) : on
+    // travaille en entiers du debut a la fin, avec le meme arrondi que l'app
+    // (app/esim/payment.tsx), pour que l'ecran annonce exactement le debit.
+    let amountXpf = Math.round(Number(pkg.final_price_xpf));
+    if (payInXpf && (!amountXpf || isNaN(amountXpf))) {
+      throw new Error(`Prix XPF invalide: ${pkg.final_price_xpf}`);
+    }
 
     // Le code promo est revalide integralement ici. L'application fait la meme
     // verification de son cote, mais uniquement pour l'affichage : seul ce
@@ -81,9 +102,13 @@ serve(async (req) => {
       if (usable) {
         if (promo.discount_percentage) {
           amountEur = amountEur * (1 - Number(promo.discount_percentage) / 100);
+          amountXpf = Math.round(amountXpf * (1 - Number(promo.discount_percentage) / 100));
         } else if (promo.discount_amount) {
-          // discount_amount est stocke en EUR, comme final_price_eur.
+          // discount_amount est stocke en EUR, comme final_price_eur. En XPF il
+          // est converti au taux fixe (1 EUR = 119,33 XPF, comme partout dans
+          // l'app et le site) puis arrondi a l'unite.
           amountEur = Math.max(0, amountEur - Number(promo.discount_amount));
+          amountXpf = Math.max(0, amountXpf - Math.round(Number(promo.discount_amount) * EUR_TO_XPF));
         }
         appliedPromo = promo.code;
       }
@@ -92,19 +117,24 @@ serve(async (req) => {
     }
 
     const priceInCents = Math.round(amountEur * 100);
-    // Stripe refuse tout paiement sous 0,50 EUR.
-    if (priceInCents < 50) throw new Error("Montant trop faible apres remise");
+    // Stripe refuse tout paiement sous 0,50 EUR (60 XPF au taux fixe).
+    if (payInXpf ? amountXpf < 60 : priceInCents < 50) throw new Error("Montant trop faible apres remise");
+
+    // Montant envoye a Stripe : unites mineures en EUR (centimes), unites
+    // entieres en XPF (pas de centimes).
+    const stripeCurrency = payInXpf ? 'xpf' : 'eur';
+    const unitAmount = payInXpf ? amountXpf : priceInCents;
 
     const session = await stripe.checkout.sessions.create({
       customer_email: user.email,
       line_items: [{
         price_data: {
-          currency: 'eur',
+          currency: stripeCurrency,
           product_data: {
             name: pkg.name || `eSIM ${pkg.slug}`,
             description: `${pkg.data_amount || ''} - ${pkg.validity || ''} jours`,
           },
-          unit_amount: priceInCents,
+          unit_amount: unitAmount,
         },
         quantity: 1,
       }],
@@ -125,7 +155,9 @@ serve(async (req) => {
     // elle que le webhook fera avancer apres verification serveur du paiement :
     // l'app ne declenche plus aucune livraison elle-meme.
     // amount est le montant reellement demande a Stripe (remise deduite) : y
-    // laisser le plein tarif fausserait la comptabilite.
+    // laisser le plein tarif fausserait la comptabilite. Il est exprime dans
+    // la devise de la colonne currency ('eur' ou 'xpf') ; stripe-webhook la
+    // reprend telle quelle dans orders (voir patch du 2026-10-29).
     const { error: insertError } = await supabase
       .from('esim_purchase_orders')
       .insert({
@@ -134,15 +166,17 @@ serve(async (req) => {
         package_id: String(pkg.airalo_id ?? pkg.id),
         package_name: pkg.name ?? null,
         data_label: [pkg.data_amount, pkg.data_unit].filter(Boolean).join(' ') || null,
-        amount: amountEur,
-        currency: 'eur',
+        amount: payInXpf ? amountXpf : amountEur,
+        currency: stripeCurrency,
         stripe_session_id: session.id,
         status: 'pending_payment',
       });
 
     if (insertError) throw insertError;
 
-    return new Response(JSON.stringify({ url: session.url, sessionId: session.id }), {
+    // currency est renvoyee pour que l'app puisse verifier la devise reellement
+    // retenue (une ancienne version de cette fonction l'ignorerait).
+    return new Response(JSON.stringify({ url: session.url, sessionId: session.id, currency: stripeCurrency.toUpperCase() }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
