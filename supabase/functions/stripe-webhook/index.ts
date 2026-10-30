@@ -327,9 +327,15 @@ async function claimAndProcessPurchase(order, supabase) {
         stripe_session_id: claimedOrder.stripe_session_id,
         status: 'completed',
         email: claimedOrder.email,
-        amount: Math.round(Number(claimedOrder.amount) * 100),
+        // 2026-10-29 : la devise suit esim_purchase_orders.currency ('eur' ou
+        // 'xpf', voir create-checkout-mobile). XPF = devise sans centimes :
+        // amount et price valent le meme entier, convention des commandes XPF
+        // du site. Une commande sans devise reste en EUR, comme avant.
+        amount: String(claimedOrder.currency ?? 'eur').toUpperCase() === 'XPF'
+          ? Math.round(Number(claimedOrder.amount))
+          : Math.round(Number(claimedOrder.amount) * 100),
         price: Number(claimedOrder.amount),
-        currency: 'EUR',
+        currency: String(claimedOrder.currency ?? 'eur').toUpperCase() === 'XPF' ? 'XPF' : 'EUR',
         package_id: claimedOrder.package_id,
         package_name: claimedOrder.package_name ?? null,
         source: 'mobile_app',
