@@ -62,7 +62,29 @@ export default function PaymentScreen() {
 
   // Montant principal dans la devise choisie, equivalent XPF exact du debit.
   const xpfOf = (eur: number) => Math.round(eur * EUR_TO_XPF)
-  const shown = (eur: number) => currency === 'EUR' ? formatAmount(eur, 'EUR') : formatAmount(xpfOf(eur), 'XPF')
+
+  // 2026-10-29 -- Facturation en XPF. Quand le client affiche les prix en XPF,
+  // create-checkout-mobile debite desormais en XPF (champ currency envoye plus
+  // bas). Le calcul ci-dessous est le meme qu'au serveur, en entiers :
+  // final_price_xpf (params.price), remise en % arrondie a l'unite, ou remise
+  // en montant EUR convertie au taux fixe puis arrondie. ORA FLY reste debite
+  // en euros par le site : il garde le calcul EUR ci-dessus.
+  const payInXpf = currency === 'XPF' && !isOra
+  const baseXpf = parseInt(params.price)
+  let finalXpf = baseXpf
+  if (discount?.percentage) finalXpf = Math.round(baseXpf * (1 - discount.percentage / 100))
+  else if (discount?.amountEur) finalXpf = Math.max(0, baseXpf - Math.round(discount.amountEur * EUR_TO_XPF))
+  const discountXpf = baseXpf - finalXpf
+
+  // Libelles : en XPF payes en XPF, montants XPF exacts ; sinon le debit EUR
+  // (avec son equivalent XPF quand l'affichage est en XPF, cas ORA FLY).
+  const totalLabel = payInXpf
+    ? formatAmount(finalXpf, 'XPF')
+    : currency === 'EUR' ? formatAmount(finalEur, 'EUR') : formatAmount(xpfOf(finalEur), 'XPF')
+  const discountLabel = payInXpf
+    ? formatAmount(discountXpf, 'XPF')
+    : currency === 'EUR' ? formatAmount(discountEur, 'EUR') : formatAmount(xpfOf(discountEur), 'XPF')
+  const payLabel = payInXpf ? formatAmount(finalXpf, 'XPF') : formatAmount(finalEur, 'EUR')
 
   async function handleApplyPromo() {
     if (!promoCode.trim()) return
@@ -98,6 +120,7 @@ export default function PaymentScreen() {
           packageId: params.packageId,
           customerEmail: session.user.email,
           customerName: session.user.email,
+          currency: payInXpf ? 'XPF' : 'EUR',
           ...(promoStatus === 'valid' ? { promoCode: promoCode.trim() } : {}),
         }
       })
@@ -106,6 +129,24 @@ export default function PaymentScreen() {
         console.error('create-checkout-mobile:', error)
         Alert.alert('Erreur', 'Impossible de créer le paiement, veuillez réessayer.')
         return
+      }
+
+      // Garde-fou : si le serveur n'a pas retenu le XPF (fonction pas encore
+      // a jour), le debit sera en euros. On le dit avant d'ouvrir Stripe plutot
+      // que de laisser le client decouvrir un autre montant.
+      if (payInXpf && data.currency !== 'XPF') {
+        const ok = await new Promise<boolean>((resolve) =>
+          Alert.alert(
+            'Paiement en euros',
+            `Ce paiement sera débité en euros : ${formatAmount(finalEur, 'EUR')}.`,
+            [
+              { text: 'Annuler', style: 'cancel', onPress: () => resolve(false) },
+              { text: 'Continuer', onPress: () => resolve(true) },
+            ],
+            { cancelable: true, onDismiss: () => resolve(false) }
+          )
+        )
+        if (!ok) return
       }
 
       await openCheckout(data.url)
@@ -152,21 +193,22 @@ export default function PaymentScreen() {
               <View style={s.row}>
                 <Text style={s.rowLabel}>Remise</Text>
                 <Text style={[s.rowVal,{color:COLORS.success}]}>
-                  {discount?.percentage ? `-${discount.percentage} %` : `-${shown(discountEur)}`}
+                  {discount?.percentage ? `-${discount.percentage} %` : `-${discountLabel}`}
                 </Text>
               </View>
             </>
           )}
           <View style={[s.row,{borderBottomWidth:0,marginTop:8}]}>
             <Text style={s.totalLabel}>Total</Text>
-            <Text style={s.totalVal}>{shown(finalEur)}</Text>
+            <Text style={s.totalVal}>{totalLabel}</Text>
           </View>
-          {/* Le debit se fait toujours en euros : on le dit avant le paiement
-              (une carte en XPF peut supporter des frais de change bancaires). */}
+          {/* Devise et montant exacts du debit, dits avant le paiement. */}
           <Text style={s.chargeNote}>
-            {currency === 'EUR'
-              ? `Montant débité : ${formatAmount(finalEur, 'EUR')} (≈ ${formatAmount(xpfOf(finalEur), 'XPF')})`
-              : `Montant débité en euros : ${formatAmount(finalEur, 'EUR')}`}
+            {payInXpf
+              ? `Montant débité : ${formatAmount(finalXpf, 'XPF')}`
+              : currency === 'EUR'
+                ? `Montant débité : ${formatAmount(finalEur, 'EUR')} (≈ ${formatAmount(xpfOf(finalEur), 'XPF')})`
+                : `Montant débité en euros : ${formatAmount(finalEur, 'EUR')}`}
           </Text>
         </View>
 
@@ -211,14 +253,14 @@ export default function PaymentScreen() {
           onPress={handlePayment}
           disabled={loading}
           accessibilityRole="button"
-          accessibilityLabel={`Payer ${formatAmount(finalEur, 'EUR')}`}
+          accessibilityLabel={`Payer ${payLabel}`}
         >
           <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.cta}>
             {loading
               ? <ActivityIndicator color="#fff" />
               : <>
                   <Ionicons name="card-outline" size={20} color="#fff" style={{marginRight:8}} />
-                  <Text style={s.ctaTxt}>Payer {formatAmount(finalEur, 'EUR')}</Text>
+                  <Text style={s.ctaTxt}>Payer {payLabel}</Text>
                 </>
             }
           </LinearGradient>

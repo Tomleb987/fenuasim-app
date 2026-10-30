@@ -9,7 +9,7 @@ import { COLORS, RADIUS, SHADOW, TYPO } from '../../constants/theme'
 import { destinationImageUrl } from '../../lib/destinationImage'
 import { getFR } from '../../lib/regionNames'
 import { getPlanType, getPlanTypeLabel, getPlanTypeIcon, parseVoiceSmsVolume, INTERNET_ONLY_CAPTION, INTERNET_ONLY_EXPLANATION, PlanCoverageType } from '../../hooks/usePackageInfo'
-import { useCurrency } from '../../lib/currency'
+import { useCurrency, formatAmount } from '../../lib/currency'
 import { useSession } from '../../hooks/useSession'
 import { requireAuth } from '../../lib/authGate'
 import { fetchOraCatalog, oraUnavailableLabel, ORA_COVERAGE, POLYNESIA_NAME, POLYNESIA_SLUG, type OraCatalog } from '../../lib/oraFly'
@@ -87,7 +87,19 @@ export default function CountryDetail() {
   // superpose au bas de l'ecran. Sans cet inset, le bouton principal passe
   // partiellement sous la barre de gestes ou les 3 boutons.
   const insets = useSafeAreaInsets()
-  const { formatXpf } = useCurrency()
+  const { currency, formatXpf } = useCurrency()
+  // 2026-10-29 : prix affiche = prix reellement debite.
+  // - En XPF : final_price_xpf, debite tel quel (create-checkout-mobile
+  //   facture desormais en XPF quand l'app le demande).
+  // - En EUR : final_price_eur, le montant debite au centime pres. Avant, la
+  //   liste affichait final_price_xpf / 119,33 arrondi a l'euro superieur, soit
+  //   souvent 1 EUR de plus que le debit reel (prix arrondis separement en base).
+  // Les forfaits ORA FLY suivent la meme regle en EUR ; en XPF ils restent
+  //   debites en euros par le site, l'ecran de paiement le precise.
+  const planPrice = (p: Pkg) =>
+    currency === 'EUR' && p.final_price_eur != null && Number(p.final_price_eur) > 0
+      ? formatAmount(Number(p.final_price_eur), 'EUR')
+      : formatXpf(p.final_price_xpf)
   const { country: slug } = useLocalSearchParams<{ country: string }>()
   const { session } = useSession()
   const [plans, setPlans] = useState<Pkg[]>([])
@@ -389,7 +401,7 @@ export default function CountryDetail() {
                   <Text style={s.planCardTypeTxt}>{getPlanTypeLabel(planType, volume)}</Text>
                 </View>
                 {planType === 'internet' && <Text style={s.planCardCaption}>{INTERNET_ONLY_CAPTION}</Text>}
-                <Text style={s.planCardPrice}>{formatXpf(p.final_price_xpf)}</Text>
+                <Text style={s.planCardPrice}>{planPrice(p)}</Text>
               </TouchableOpacity>
             )
           }}
@@ -483,12 +495,11 @@ export default function CountryDetail() {
               colors={unavailable ? ['#B5B5B5', '#B5B5B5'] : ['#D251D8', '#FD7F3C']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.ctaBtn}
             >
-              {/* Le prix ORA est stocke en XPF comme ceux d'Airalo : il passe par
-                  formatXpf, donc par la devise d'affichage choisie (XPF ou EUR). */}
+              {/* Meme prix que la carte du forfait : planPrice (voir plus haut). */}
               <Text style={s.ctaTxt}>
                 {unavailable
-                  ? `${unavailable} · ${formatXpf(sel.final_price_xpf)}`
-                  : `Acheter · ${formatXpf(sel.final_price_xpf)}`}
+                  ? `${unavailable} · ${planPrice(sel)}`
+                  : `Acheter · ${planPrice(sel)}`}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
