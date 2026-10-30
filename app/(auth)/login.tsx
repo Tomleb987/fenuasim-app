@@ -27,10 +27,13 @@ export default function LoginScreen() {
   const [error, setError] = useState<string | null>(null)
 
   async function handleLogin() {
-    if (!email || !password) { setError('Remplissez tous les champs.'); return }
+    // Meme nettoyage qu'a l'inscription : une espace finale ajoutee par le
+    // clavier faisait echouer la connexion (« Email ou mot de passe incorrect »).
+    const cleanEmail = email.trim()
+    if (!cleanEmail || !password) { setError('Remplissez tous les champs.'); return }
     setError(null)
     setLoading(true)
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    const { error: authError } = await supabase.auth.signInWithPassword({ email: cleanEmail, password })
     setLoading(false)
     if (authError) setError('Email ou mot de passe incorrect.')
     else router.replace((redirect as Href) ?? '/(tabs)')

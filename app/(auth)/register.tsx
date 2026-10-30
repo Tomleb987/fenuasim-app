@@ -28,13 +28,24 @@ export default function RegisterScreen() {
   const [error, setError] = useState<string | null>(null)
 
   async function handleRegister() {
-    if (!fullName || !email || !password) { setError('Remplissez tous les champs.'); return }
+    // Le clavier iOS ajoute souvent une espace apres l'adresse proposee par
+    // l'autocompletion : Supabase la refusait (« invalid format », 6 echecs la
+    // nuit du 2026-10-29) et le client voyait une erreur generique.
+    const cleanEmail = email.trim()
+    if (!fullName.trim() || !cleanEmail || !password) { setError('Remplissez tous les champs.'); return }
     if (password.length < 6) { setError('Mot de passe trop court (6 caractères minimum).'); return }
     setError(null)
     setLoading(true)
-    const { error: authError } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } })
+    const { error: authError } = await supabase.auth.signUp({ email: cleanEmail, password, options: { data: { full_name: fullName.trim() } } })
     setLoading(false)
-    if (authError) setError(authError.message.includes('already registered') ? 'Un compte existe déjà avec cet email.' : 'Une erreur est survenue, veuillez réessayer.')
+    if (authError) {
+      const msg = authError.message.toLowerCase()
+      setError(
+        msg.includes('already registered') ? 'Un compte existe déjà avec cet email.'
+        : msg.includes('invalid format') || msg.includes('validate email') ? "Cette adresse e-mail n'est pas valide. Vérifiez-la."
+        : 'Une erreur est survenue, veuillez réessayer.'
+      )
+    }
     else {
       Alert.alert('Compte créé !', 'Vous pouvez maintenant vous connecter.')
       router.replace({ pathname: '/(auth)/login', params: redirect ? { redirect } : {} } as Href)
