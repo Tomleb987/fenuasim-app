@@ -6,6 +6,7 @@
 // la session quand il faut identifier le client. Rien ne passe par
 // airalo_packages, create-checkout-mobile ni airalo_orders.
 import { supabase } from './supabase'
+import { fetchWithTimeout } from './http'
 
 export const SITE_URL = 'https://www.fenuasim.com'
 export const POLYNESIA_SLUG = 'polynesie-francaise'
@@ -54,7 +55,7 @@ async function readJson(res: Response) {
 }
 
 export async function fetchOraCatalog(): Promise<OraCatalog> {
-  const data = await readJson(await fetch(`${SITE_URL}/api/ora/packages`))
+  const data = await readJson(await fetchWithTimeout(`${SITE_URL}/api/ora/packages`))
   return { salesOpen: !!data.salesOpen, packages: data.packages ?? [] }
 }
 
@@ -64,7 +65,7 @@ export async function fetchOraCatalog(): Promise<OraCatalog> {
  * depuis un stock achete d'avance, a prix ferme.
  */
 export async function createOraCheckout(packageId: string): Promise<string> {
-  const data = await readJson(await fetch(`${SITE_URL}/api/ora/mobile-checkout`, {
+  const data = await readJson(await fetchWithTimeout(`${SITE_URL}/api/ora/mobile-checkout`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
     body: JSON.stringify({ packageId }),
@@ -93,7 +94,7 @@ export type OraOrderResult =
  * le webhook du site). L'app ne déclenche jamais la livraison elle-même.
  */
 export async function fetchOraResult(sessionId: string): Promise<OraOrderResult> {
-  const res = await fetch(`${SITE_URL}/api/checkout/result`, {
+  const res = await fetchWithTimeout(`${SITE_URL}/api/checkout/result`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ session_id: sessionId }),
@@ -136,7 +137,7 @@ export async function fetchMyOraEsims(): Promise<MyOraEsim[]> {
   try {
     const headers = await authHeader()
     if (!headers.Authorization) return []
-    const res = await fetch(`${SITE_URL}/api/account/ora-esims`, { headers })
+    const res = await fetchWithTimeout(`${SITE_URL}/api/account/ora-esims`, { headers })
     if (!res.ok) return []
     const data = await res.json()
     return data.data ?? []

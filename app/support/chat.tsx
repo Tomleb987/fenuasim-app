@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { COLORS, RADIUS, SHADOW } from '../../constants/theme'
 import { buildWhatsappUrl } from '../../constants/support'
+import { fetchWithTimeout } from '../../lib/http'
 import { Linking } from 'react-native'
 
 const ASSISTANT_API_URL = 'https://www.fenuasim.com/api/assistant'
@@ -168,11 +169,12 @@ export default function SupportChatScreen() {
     setMessages(nextMessages)
     setSending(true)
     try {
-      const res = await fetch(ASSISTANT_API_URL, {
+      // 2026-10-25 : delai maximal de 45 s (reponse en flux de l'assistant).
+      const res = await fetchWithTimeout(ASSISTANT_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: nextMessages, sessionId }),
-      })
+      }, 45_000)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const raw = await res.text()
       const reply = parseAssistantStream(raw)

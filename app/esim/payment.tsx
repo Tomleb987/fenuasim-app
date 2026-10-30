@@ -5,8 +5,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { supabase } from '../../lib/supabase'
-import { COLORS, RADIUS, SHADOW, TYPO } from '../../constants/theme'
-import { useCurrency, toDisplayAmount, formatAmount, applyDiscountTo } from '../../lib/currency'
+import { COLORS, RADIUS, SHADOW, TYPO, EUR_TO_XPF } from '../../constants/theme'
+import { useCurrency, formatAmount } from '../../lib/currency'
 import { validateEsimPromoCode } from '../../hooks/usePromoCode'
 import { openCheckout } from '../../lib/checkout'
 import { createOraCheckout, isOraPackageId } from '../../lib/oraFly'
@@ -27,6 +27,7 @@ export default function PaymentScreen() {
     packageId: string
     packageName: string
     price: string
+    priceEur?: string
     days: string
     data: string
     country: string
@@ -36,14 +37,32 @@ export default function PaymentScreen() {
   // ferme : aucun code promo ne s'y applique.
   const isOra = isOraPackageId(params.packageId)
 
-  // La remise s'applique sur le montant DEJA converti dans la devise
-  // d'affichage, exactement comme le fait l'edge function sur le prix en euros.
-  // L'appliquer sur les XPF avant l'arrondi a l'euro superieur la rendait
-  // invisible sur plus de la moitie du catalogue.
-  const basePrice = toDisplayAmount(parseInt(params.price), currency)
-  const finalPrice = discount
-    ? applyDiscountTo(basePrice, currency, discount.percentage, discount.amountEur)
-    : basePrice
+  // 2026-10-25 -- Le total affiche est desormais le montant REELLEMENT debite.
+  //
+  // Stripe debite toujours en euros, sur airalo_packages.final_price_eur (ou
+  // ora_packages.final_price_eur). Avant, l'ecran derivait le prix du XPF
+  // catalogue : en XPF il annoncait par exemple 673 XPF quand la carte etait
+  // debitee de 6 EUR (= 716 XPF), et meme en EUR il affichait 1 EUR de trop
+  // sur 385 forfaits (les prix EUR et XPF sont arrondis separement en base).
+  // Le client decouvrait un autre montant chez Stripe ou sur son releve.
+  //
+  // Le calcul suit a l'identique l'edge function create-checkout-mobile :
+  // remise en % ou en montant (EUR) sur final_price_eur, arrondi au centime.
+  // Repli (ancienne navigation sans priceEur) : arrondi a l'euro superieur du
+  // XPF, la regle d'affichage historique.
+  const parsedEur = Number(params.priceEur)
+  const baseEur = params.priceEur && Number.isFinite(parsedEur) && parsedEur > 0
+    ? parsedEur
+    : Math.ceil(parseInt(params.price) / EUR_TO_XPF)
+  let finalEur = baseEur
+  if (discount?.percentage) finalEur = baseEur * (1 - discount.percentage / 100)
+  else if (discount?.amountEur) finalEur = Math.max(0, baseEur - discount.amountEur)
+  finalEur = Math.round(finalEur * 100) / 100
+  const discountEur = Math.round((baseEur - finalEur) * 100) / 100
+
+  // Montant principal dans la devise choisie, equivalent XPF exact du debit.
+  const xpfOf = (eur: number) => Math.round(eur * EUR_TO_XPF)
+  const shown = (eur: number) => currency === 'EUR' ? formatAmount(eur, 'EUR') : formatAmount(xpfOf(eur), 'XPF')
 
   async function handleApplyPromo() {
     if (!promoCode.trim()) return
@@ -102,7 +121,7 @@ export default function PaymentScreen() {
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <LinearGradient colors={['#D251D8', '#FD7F3C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.hero}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity onPress={() => router.back()} style={s.backBtn} accessibilityRole="button" accessibilityLabel="Retour">
           <Ionicons name="arrow-back" size={20} color="#fff" />
         </TouchableOpacity>
         <Text style={s.heroTitle}>Paiement</Text>
@@ -133,15 +152,22 @@ export default function PaymentScreen() {
               <View style={s.row}>
                 <Text style={s.rowLabel}>Remise</Text>
                 <Text style={[s.rowVal,{color:COLORS.success}]}>
-                  {discount?.percentage ? `-${discount.percentage} %` : `-${formatAmount(basePrice - finalPrice, currency)}`}
+                  {discount?.percentage ? `-${discount.percentage} %` : `-${shown(discountEur)}`}
                 </Text>
               </View>
             </>
           )}
           <View style={[s.row,{borderBottomWidth:0,marginTop:8}]}>
             <Text style={s.totalLabel}>Total</Text>
-            <Text style={s.totalVal}>{formatAmount(finalPrice, currency)}</Text>
+            <Text style={s.totalVal}>{shown(finalEur)}</Text>
           </View>
+          {/* Le debit se fait toujours en euros : on le dit avant le paiement
+              (une carte en XPF peut supporter des frais de change bancaires). */}
+          <Text style={s.chargeNote}>
+            {currency === 'EUR'
+              ? `Montant débité : ${formatAmount(finalEur, 'EUR')} (≈ ${formatAmount(xpfOf(finalEur), 'XPF')})`
+              : `Montant débité en euros : ${formatAmount(finalEur, 'EUR')}`}
+          </Text>
         </View>
 
         <View style={s.promoCard}>
@@ -180,13 +206,19 @@ export default function PaymentScreen() {
       </View>
 
       <View style={[s.ctaBar, { paddingBottom: 16 + insets.bottom }]}>
-        <TouchableOpacity style={s.ctaWrap} onPress={handlePayment} disabled={loading}>
+        <TouchableOpacity
+          style={s.ctaWrap}
+          onPress={handlePayment}
+          disabled={loading}
+          accessibilityRole="button"
+          accessibilityLabel={`Payer ${formatAmount(finalEur, 'EUR')}`}
+        >
           <LinearGradient colors={['#D251D8','#FD7F3C']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.cta}>
             {loading
               ? <ActivityIndicator color="#fff" />
               : <>
                   <Ionicons name="card-outline" size={20} color="#fff" style={{marginRight:8}} />
-                  <Text style={s.ctaTxt}>Payer {formatAmount(finalPrice, currency)}</Text>
+                  <Text style={s.ctaTxt}>Payer {formatAmount(finalEur, 'EUR')}</Text>
                 </>
             }
           </LinearGradient>
@@ -210,6 +242,7 @@ const s = StyleSheet.create({
   rowVal:{fontSize:13,fontWeight:'600',color:COLORS.text},
   totalLabel:{fontSize:15,fontWeight:'700',color:COLORS.text},
   totalVal:{fontSize:20,fontWeight:'800',color:COLORS.violet},
+  chargeNote:{fontSize:12,color:COLORS.textMuted,textAlign:'right',marginTop:2},
   promoCard:{backgroundColor:'#fff',borderRadius:RADIUS.lg,padding:16,marginBottom:12,...SHADOW.card},
   promoLabel:{fontSize:12,fontWeight:'700',color:COLORS.textMuted,textTransform:'uppercase',letterSpacing:0.3,marginBottom:8},
   promoRow:{flexDirection:'row',gap:10},
