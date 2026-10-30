@@ -10,6 +10,7 @@ import { supabase } from '../../lib/supabase'
 import { useCurrency, CurrencyCode } from '../../lib/currency'
 import { useSession } from '../../hooks/useSession'
 import dayjs from 'dayjs'
+import AppVersion from '../../components/AppVersion'
 
 // Noms produits reels observes en base (product_type) -> libelle lisible.
 // N'invente aucun produit : mappe seulement ce qui existe deja reellement.
@@ -146,6 +147,7 @@ export default function AccountScreen() {
             </TouchableOpacity>
           </View>
 
+          <AppVersion />
           <View style={{ height: 24 }} />
         </ScrollView>
       </SafeAreaView>
@@ -306,6 +308,7 @@ export default function AccountScreen() {
           <Text style={s.deleteAccountTxt}>Supprimer mon compte</Text>
         </TouchableOpacity>
 
+        <AppVersion />
         <View style={{height:30}} />
       </ScrollView>
     </SafeAreaView>
