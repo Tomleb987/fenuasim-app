@@ -69,6 +69,20 @@ function formatNetworkEntry(entry: string): string {
   return m ? `${m[1].trim()} • ${m[2].trim()}` : entry
 }
 
+// 2026-10-29 : volume de donnees en Go, unite comprise. Avant, le tri et les
+// filtres lisaient data_amount seul : « 300 Mo » comptait pour 300 et passait
+// derriere « 1 Go », compte pour 1. Sur Monde, le forfait le moins cher
+// (300 Mo a 113 XPF, celui du « Des 113 XPF » de l'accueil) se retrouvait en
+// bas de liste, et le client voyait d'abord 1 Go a 280 XPF. 17 forfaits sur
+// 6 destinations sont exprimes en Mo. Le filtre « <= 5 Go » les excluait et
+// « 10 Go+ » les incluait, a tort. 1 Go = 1 024 Mo, comme chez Airalo.
+function dataInGo(p: Pick<Pkg, 'data_amount' | 'data_unit'>): number {
+  const n = Number(p.data_amount ?? 0)
+  if (!Number.isFinite(n)) return 0
+  const unit = (p.data_unit ?? '').toLowerCase()
+  return unit === 'mo' || unit === 'mb' ? n / 1024 : n
+}
+
 type DataFilter = 'all' | 'low' | 'high' | 'unlimited'
 type DurationFilter = 'all' | 'short' | 'medium' | 'long'
 const GRID_FILLER = { id: '__filler__' } as Pkg
@@ -167,8 +181,8 @@ export default function CountryDetail() {
     if (data && data.length > 0) {
       // Tri commercial : data croissante, puis duree, puis prix. Illimite en dernier.
       const sorted = [...data].sort((a, b) => {
-        const da = a.is_unlimited ? Infinity : Number(a.data_amount ?? 0)
-        const db = b.is_unlimited ? Infinity : Number(b.data_amount ?? 0)
+        const da = a.is_unlimited ? Infinity : dataInGo(a)
+        const db = b.is_unlimited ? Infinity : dataInGo(b)
         if (da !== db) return da - db
         const durA = getDurationDays(a as Pkg)
         const durB = getDurationDays(b as Pkg)
@@ -191,8 +205,8 @@ export default function CountryDetail() {
 
   const filteredPlans = useMemo(() => {
     return plans.filter(p => {
-      if (dataFilter === 'low' && !(!p.is_unlimited && Number(p.data_amount ?? 0) <= 5)) return false
-      if (dataFilter === 'high' && !(!p.is_unlimited && Number(p.data_amount ?? 0) >= 10)) return false
+      if (dataFilter === 'low' && !(!p.is_unlimited && dataInGo(p) <= 5)) return false
+      if (dataFilter === 'high' && !(!p.is_unlimited && dataInGo(p) >= 10)) return false
       if (dataFilter === 'unlimited' && !p.is_unlimited) return false
       if (durationFilter !== 'all') {
         const d = getDurationDays(p)
