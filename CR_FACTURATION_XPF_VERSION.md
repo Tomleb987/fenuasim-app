@@ -24,6 +24,10 @@ Enfin, rien ne permettait de savoir sur un téléphone quelle mise à jour OTA e
 
 Inchangé : ORA FLY (débité en euros par le site), recharges et assurance (euros), prix « Dès … » de l'accueil et d'Explorer (arrondis, ce sont des prix d'appel).
 
+## Déploiement
+
+- 2026-10-29 16:40 (Tahiti) : `stripe-webhook` version 52 (patch devise) et `create-checkout-mobile` version 8 déployées. Sauvegardes : commits `9789007` (webhook v51) et `3ec2f9b` (checkout v7).
+
 ## Ordre de déploiement (important)
 
 1. **stripe-webhook** : appliquer le patch sur le code téléchargé au moment du déploiement (sauvegarde de la version 51 à côté).
